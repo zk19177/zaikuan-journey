@@ -3,848 +3,2025 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在宽 - 18年阿里菜鸟生涯轨迹</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <title>Hello ZK's World</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <style>
-        * { font-family: 'Noto Sans SC', sans-serif; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Noto Sans SC', 'Outfit', sans-serif; }
+
+        /* ========== COLOR THEME: Bright, Vibrant, Positive ========== */
         :root {
-            --bg-primary: #0a0e17;
-            --bg-secondary: #111827;
-            --accent-orange: #f97316;
-            --accent-blue: #3b82f6;
-            --accent-green: #10b981;
-            --accent-purple: #8b5cf6;
-            --accent-pink: #ec4899;
-            --accent-yellow: #eab308;
+            --bg-main: #faf7f2;
+            --bg-card: #ffffff;
+            --bg-splash: #0d1117;
+            --accent-orange: #ff7e5f;
+            --accent-coral: #feb47b;
+            --accent-blue: #4facfe;
+            --accent-sky: #00f2fe;
+            --accent-purple: #a18cd1;
+            --accent-pink: #fbc2eb;
+            --accent-green: #43e97b;
+            --accent-lime: #38f9d7;
+            --accent-yellow: #f6d365;
+            --accent-warm: #fda085;
+            --text-primary: #2d3436;
+            --text-secondary: #636e72;
+            --text-light: #b2bec3;
+            --gradient-hero: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-warm: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            --gradient-sun: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            --gradient-ocean: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --gradient-fresh: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --gradient-dream: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+            --shadow-soft: 0 4px 24px rgba(0,0,0,0.06);
+            --shadow-card: 0 8px 32px rgba(0,0,0,0.08);
+            --shadow-hover: 0 16px 48px rgba(0,0,0,0.12);
+            --radius: 20px;
         }
+
         body {
-            background: var(--bg-primary);
-            min-height: 100vh;
-            color: #e5e7eb;
+            background: var(--bg-main);
+            color: var(--text-primary);
             overflow-x: hidden;
+            min-height: 100vh;
         }
 
-        /* Hero section */
-        .hero-bg {
-            background: radial-gradient(ellipse at 30% 20%, rgba(59,130,246,0.15) 0%, transparent 50%),
-                        radial-gradient(ellipse at 70% 60%, rgba(139,92,246,0.1) 0%, transparent 50%),
-                        radial-gradient(ellipse at 50% 100%, rgba(249,115,22,0.08) 0%, transparent 50%);
+        /* ========== SPLASH SCREEN ========== */
+        #splash {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: var(--bg-splash);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+        #splash.fade-out {
+            opacity: 0;
+            transform: scale(1.05);
+            pointer-events: none;
+        }
+        #splash-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .splash-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s ease;
+        }
+        .splash-content.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .splash-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(36px, 8vw, 72px);
+            font-weight: 900;
+            background: linear-gradient(135deg, #4facfe, #00f2fe, #43e97b, #f6d365, #ff7e5f, #a18cd1);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 3s ease infinite;
+            letter-spacing: -1px;
+            line-height: 1.1;
+        }
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .splash-subtitle {
+            font-size: clamp(16px, 3vw, 24px);
+            font-weight: 300;
+            color: rgba(255,255,255,0.6);
+            margin-top: 12px;
+            letter-spacing: 6px;
+        }
+        .splash-enter-btn {
+            margin-top: 40px;
+            padding: 14px 48px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            box-shadow: 0 8px 32px rgba(79,172,254,0.4);
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .splash-enter-btn.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .splash-enter-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 12px 40px rgba(79,172,254,0.6);
         }
 
-        .avatar-ring {
-            background: conic-gradient(from 0deg, #f97316, #eab308, #10b981, #3b82f6, #8b5cf6, #ec4899, #f97316);
-            padding: 4px;
+        /* ========== MAIN APP ========== */
+        #app {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        #app.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        /* ========== TAB NAV ========== */
+        .tab-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(250,247,242,0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            padding: 0 20px;
+        }
+        .tab-nav-inner {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            height: 60px;
+        }
+        .tab-logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            background: var(--gradient-ocean);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-right: 32px;
+            white-space: nowrap;
+        }
+        .tab-btn {
+            padding: 16px 24px;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border: none;
+            background: none;
+            cursor: pointer;
+            position: relative;
+            transition: color 0.3s;
+        }
+        .tab-btn:hover { color: var(--text-primary); }
+        .tab-btn.active {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 24px;
+            right: 24px;
+            height: 3px;
+            background: var(--gradient-ocean);
+            border-radius: 3px 3px 0 0;
+        }
+
+        /* ========== GUESTBOOK TAB ========== */
+        .guestbook-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+        .guestbook-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .guestbook-header h2 {
+            font-size: 32px;
+            font-weight: 900;
+            background: var(--gradient-dream);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .guestbook-header p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Message form */
+        .msg-form {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow-soft);
+            margin-bottom: 32px;
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .msg-form-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .msg-input, .msg-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: #fafafa;
+            outline: none;
+            transition: border-color 0.3s, background 0.3s;
+            font-family: inherit;
+        }
+        .msg-input:focus, .msg-textarea:focus {
+            border-color: var(--accent-blue);
+            background: #fff;
+        }
+        .msg-input::placeholder, .msg-textarea::placeholder {
+            color: #ccc;
+        }
+        .msg-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .msg-form-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .msg-upload-btn {
+            padding: 8px 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: #f5f5f5;
+            border: 1.5px dashed #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .msg-upload-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            background: rgba(79,172,254,0.05);
+        }
+        .msg-submit-btn {
+            margin-left: auto;
+            padding: 10px 28px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            background: var(--gradient-ocean);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(79,172,254,0.3);
+        }
+        .msg-submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(79,172,254,0.5);
+        }
+        .msg-submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .msg-preview {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .msg-preview-item {
+            position: relative;
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+        .msg-preview-item img, .msg-preview-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .msg-preview-item .remove-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 18px;
+            height: 18px;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            border: none;
             border-radius: 50%;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
         }
-        .avatar-inner {
+
+        /* Message cards */
+        .msg-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-soft);
+            margin-bottom: 16px;
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: all 0.3s;
+            animation: msgIn 0.4s ease;
+        }
+        @keyframes msgIn {
+            from { opacity:0; transform: translateY(16px); }
+            to { opacity:1; transform: translateY(0); }
+        }
+        .msg-card:hover { box-shadow: var(--shadow-card); }
+        .msg-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .msg-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #fff;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .msg-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .msg-time {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-left: auto;
+        }
+        .msg-actions {
+            display: flex;
+            gap: 6px;
+            margin-left: 8px;
+        }
+        .msg-action-btn {
+            padding: 2px 8px;
+            font-size: 11px;
+            background: none;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .msg-action-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+        .msg-action-btn.delete:hover {
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+        }
+        .msg-text {
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .msg-media {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .msg-media img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            object-fit: cover;
+        }
+        .msg-media img:hover { transform: scale(1.03); }
+        .msg-media video {
+            max-width: 320px;
+            border-radius: 12px;
+        }
+        .msg-empty {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-light);
+        }
+        .msg-empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .msg-count {
+            font-size: 13px;
+            color: var(--text-light);
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        /* ========== JOURNEY TAB ========== */
+        .journey-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+
+        /* Hero card */
+        .hero-card {
+            background: var(--bg-card);
+            border-radius: 24px;
+            padding: 48px 40px;
+            text-align: center;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, #4facfe, #43e97b, #f6d365, #ff7e5f, #a18cd1, #fbc2eb);
+        }
+        .hero-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, #4facfe, #a18cd1, #ff7e5f);
+            padding: 4px;
+        }
+        .hero-avatar-inner {
+            width: 100%;
+            height: 100%;
             border-radius: 50%;
             overflow: hidden;
-            background: var(--bg-primary);
+            background: var(--bg-card);
+        }
+        .hero-avatar-inner img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .hero-avatar-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #4facfe, #a18cd1);
+            color: #fff;
+            border-radius: 50%;
+        }
+        .hero-name {
+            font-size: 40px;
+            font-weight: 900;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .hero-id {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .hero-role {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 20px;
+        }
+        .hero-motto {
+            font-size: 18px;
+            font-weight: 300;
+            color: var(--text-secondary);
+            letter-spacing: 6px;
+            margin-bottom: 24px;
+        }
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+        .hero-stat {
+            text-align: center;
+        }
+        .hero-stat-value {
+            font-size: 28px;
+            font-weight: 900;
+        }
+        .hero-stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+        .hero-tags {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        .hero-tag {
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #f5f5f5;
+            color: var(--text-secondary);
+            border: 1px solid #eee;
         }
 
-        /* Profile card */
-        .profile-card {
-            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.06) 100%);
-            border: 1px solid rgba(255,255,255,0.08);
-            backdrop-filter: blur(20px);
+        /* Profile info */
+        .profile-section {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 32px;
+            box-shadow: var(--shadow-soft);
+            margin-bottom: 48px;
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .section-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+        }
+        .profile-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .profile-label {
+            font-size: 13px;
+            color: var(--text-light);
+            min-width: 70px;
+        }
+        .profile-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .profile-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #f5f5f5;
+        }
+        .profile-tag {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1.5px solid;
         }
 
         /* Timeline */
-        .timeline-line {
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+            margin-bottom: 48px;
+        }
+        .timeline::before {
+            content: '';
             position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 14px;
+            top: 0;
+            bottom: 0;
             width: 3px;
-            height: 100%;
-            background: linear-gradient(180deg, #f97316 0%, #eab308 20%, #10b981 40%, #3b82f6 60%, #8b5cf6 80%, #ec4899 100%);
+            background: linear-gradient(180deg, #4facfe, #43e97b, #f6d365, #ff7e5f, #a18cd1, #b2bec3);
+            border-radius: 3px;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 32px;
+            animation: fadeInUp 0.5s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity:0; transform:translateY(20px); }
+            to { opacity:1; transform:translateY(0); }
         }
         .timeline-dot {
+            position: absolute;
+            left: -33px;
+            top: 18px;
             width: 16px;
             height: 16px;
             border-radius: 50%;
             border: 3px solid;
-            background: var(--bg-primary);
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
+            background: var(--bg-main);
+            z-index: 2;
         }
-        .year-label {
+        .timeline-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: all 0.3s;
+            border-left: 4px solid;
+        }
+        .timeline-card:hover {
+            box-shadow: var(--shadow-card);
+            transform: translateX(4px);
+        }
+        .timeline-year {
+            display: inline-block;
+            padding: 3px 14px;
+            border-radius: 20px;
             font-size: 13px;
             font-weight: 700;
-            letter-spacing: 1px;
-            padding: 4px 14px;
+            margin-bottom: 10px;
+        }
+        .timeline-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .timeline-desc {
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+        .timeline-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .timeline-tag {
+            padding: 3px 10px;
             border-radius: 20px;
-            display: inline-block;
+            font-size: 11px;
+            background: #f5f5f5;
+            color: var(--text-secondary);
         }
 
-        /* Cards */
-        .glass-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 16px;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        /* Quotes section */
+        .quotes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 16px;
+            margin-bottom: 48px;
         }
-        .glass-card:hover {
-            background: rgba(255,255,255,0.06);
-            border-color: rgba(255,255,255,0.12);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 60px -15px rgba(0,0,0,0.5);
-        }
-
         .quote-card {
-            border-left: 3px solid;
-            background: rgba(255,255,255,0.02);
-        }
-
-        /* Tags */
-        .tag {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 20px;
-            padding: 4px 14px;
-            font-size: 12px;
-            display: inline-block;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid rgba(0,0,0,0.04);
+            border-left: 4px solid;
             transition: all 0.3s;
         }
-        .tag:hover { background: rgba(255,255,255,0.12); }
-
-        /* Signature style */
-        .signature-text {
-            font-size: 20px;
-            font-weight: 300;
-            letter-spacing: 8px;
-            color: rgba(255,255,255,0.6);
+        .quote-card:hover {
+            box-shadow: var(--shadow-card);
+            transform: translateY(-3px);
+        }
+        .quote-text {
+            font-size: 15px;
+            font-style: italic;
+            line-height: 1.8;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+        .quote-source {
+            font-size: 12px;
+            color: var(--text-light);
         }
 
-        /* Scroll animations */
-        .reveal {
-            opacity: 0;
-            transform: translateY(40px);
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        /* Achievement cards */
+        .achievement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+            margin-bottom: 48px;
         }
-        .reveal.visible {
-            opacity: 1;
-            transform: translateY(0);
+        .achievement-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            text-align: center;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: all 0.3s;
+        }
+        .achievement-card:hover {
+            box-shadow: var(--shadow-card);
+            transform: translateY(-4px);
+        }
+        .achievement-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            margin: 0 auto 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .achievement-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .achievement-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
         }
 
-        /* Stats */
-        .stat-value {
-            font-size: 36px;
+        /* Forum section */
+        .forum-stats {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+        .forum-stat-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 16px 28px;
+            text-align: center;
+            box-shadow: var(--shadow-soft);
+        }
+        .forum-stat-val {
+            font-size: 24px;
             font-weight: 900;
-            background: linear-gradient(135deg, #f97316, #eab308);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
-
-        /* Gradient text */
-        .gradient-title {
-            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .forum-stat-lbl {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 2px;
         }
-
-        /* Section divider */
-        .section-divider {
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        .forum-filters {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
         }
-
-        /* Floating particles */
-        .particle {
-            position: fixed;
-            width: 2px;
-            height: 2px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 50%;
-            pointer-events: none;
-            animation: floatUp 20s linear infinite;
+        .forum-filter-btn {
+            padding: 7px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1.5px solid #eee;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
         }
-        @keyframes floatUp {
-            0% { transform: translateY(100vh) scale(0); opacity: 0; }
-            10% { opacity: 1; transform: translateY(80vh) scale(1); }
-            90% { opacity: 0.5; }
-            100% { transform: translateY(-10vh) scale(0); opacity: 0; }
+        .forum-filter-btn:hover { border-color: #ccc; }
+        .forum-filter-btn.active {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            background: rgba(79,172,254,0.06);
         }
-
-        /* Forum post cards */
+        .forum-search-wrap {
+            position: relative;
+        }
+        .forum-search {
+            padding: 7px 14px 7px 34px;
+            border: 1.5px solid #eee;
+            border-radius: 20px;
+            font-size: 13px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            outline: none;
+            width: 160px;
+            transition: all 0.3s;
+        }
+        .forum-search:focus {
+            border-color: var(--accent-blue);
+            width: 200px;
+        }
+        .forum-search-icon {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ccc;
+        }
         .forum-post {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 12px;
+            background: var(--bg-card);
+            border-radius: 14px;
             padding: 16px 20px;
-            transition: all 0.3s ease;
+            margin-bottom: 8px;
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: all 0.3s;
             cursor: default;
         }
         .forum-post:hover {
-            background: rgba(255,255,255,0.05);
-            border-color: rgba(255,255,255,0.12);
-            transform: translateX(4px);
+            box-shadow: var(--shadow-soft);
+            transform: translateX(3px);
         }
-        .forum-post .post-title {
+        .forum-post-title {
             font-size: 14px;
             font-weight: 600;
-            color: rgba(255,255,255,0.88);
-            margin-bottom: 6px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
             line-height: 1.5;
         }
-        .forum-post .post-content {
-            font-size: 12.5px;
-            color: rgba(255,255,255,0.45);
+        .forum-post-content {
+            font-size: 13px;
+            color: var(--text-light);
             line-height: 1.6;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        .forum-post .post-meta {
+        .forum-post-meta {
             display: flex;
             align-items: center;
             gap: 10px;
             margin-top: 8px;
             flex-wrap: wrap;
         }
-        .forum-post .platform-badge {
+        .forum-badge {
             font-size: 11px;
             padding: 2px 10px;
             border-radius: 10px;
-            font-weight: 500;
+            font-weight: 600;
         }
-        .forum-post .platform-badge.jizha {
-            background: rgba(16,185,129,0.1);
-            color: #6ee7b7;
-            border: 1px solid rgba(16,185,129,0.2);
+        .forum-badge.jizha {
+            background: rgba(67,233,123,0.1);
+            color: #2ecc71;
         }
-        .forum-post .platform-badge.alinei {
-            background: rgba(59,130,246,0.1);
-            color: #93c5fd;
-            border: 1px solid rgba(59,130,246,0.2);
+        .forum-badge.alinei {
+            background: rgba(79,172,254,0.1);
+            color: #4facfe;
         }
-        .forum-post .post-time {
+        .forum-post-time {
             font-size: 11px;
-            color: rgba(255,255,255,0.3);
+            color: var(--text-light);
         }
-        .forum-post .post-author {
+        .forum-post-author {
             font-size: 11px;
-            color: rgba(255,255,255,0.35);
+            color: var(--text-light);
         }
-        .forum-post a.post-link {
+        .forum-post a {
             font-size: 11px;
-            color: rgba(249,115,22,0.6);
+            color: var(--accent-orange);
             text-decoration: none;
-            transition: color 0.2s;
         }
-        .forum-post a.post-link:hover {
-            color: #f97316;
-        }
+        .forum-post a:hover { text-decoration: underline; }
         .forum-year-header {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 700;
-            color: rgba(255,255,255,0.5);
-            padding: 12px 0 6px 4px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            color: var(--text-light);
+            padding: 12px 0 6px;
+            border-bottom: 1px solid #f0f0f0;
             margin-bottom: 8px;
-            letter-spacing: 1px;
-        }
-        .forum-filter-btn.active {
-            background: rgba(255,255,255,0.14) !important;
-            border-color: rgba(255,255,255,0.25) !important;
         }
         .forum-highlight {
-            background: rgba(249,115,22,0.2);
-            color: #fbbf24;
+            background: rgba(255,126,95,0.15);
+            color: #ff7e5f;
             border-radius: 2px;
             padding: 0 2px;
         }
-
-        /* Scroll indicator */
-        @keyframes gentleBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(8px); }
+        .forum-loadmore {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .forum-loadmore button {
+            padding: 8px 28px;
+            border: 1.5px solid #eee;
+            border-radius: 20px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .forum-loadmore button:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
         }
 
-        /* Profile info grid */
-        .info-item {
+        /* Farewell */
+        .farewell-card {
+            background: var(--bg-card);
+            border-radius: 24px;
+            padding: 48px 40px;
+            text-align: center;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+        .farewell-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, #4facfe, #43e97b, #f6d365, #ff7e5f, #a18cd1);
+        }
+        .farewell-text {
+            font-size: 15px;
+            line-height: 2;
+            color: var(--text-secondary);
+        }
+        .farewell-highlight {
+            font-weight: 600;
+        }
+        .farewell-motto {
+            font-size: 22px;
+            font-weight: 300;
+            color: var(--text-primary);
+            letter-spacing: 10px;
+            margin: 24px 0;
+        }
+        .farewell-end {
+            font-size: 13px;
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        /* Footer */
+        .page-footer {
+            text-align: center;
+            padding: 32px 20px;
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        /* Lightbox */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: rgba(0,0,0,0.9);
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
         }
-        .info-label {
-            color: rgba(255,255,255,0.4);
-            font-size: 13px;
-            min-width: 80px;
+        .lightbox.active {
+            opacity: 1;
+            pointer-events: auto;
         }
-        .info-value {
-            color: rgba(255,255,255,0.85);
-            font-size: 14px;
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 12px;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        /* Scroll reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .hero-card { padding: 32px 20px; }
+            .hero-name { font-size: 32px; }
+            .hero-stats { gap: 20px; }
+            .hero-stat-value { font-size: 22px; }
+            .quotes-grid { grid-template-columns: 1fr; }
+            .achievement-grid { grid-template-columns: 1fr; }
+            .msg-form-row { flex-direction: column; }
+            .timeline { padding-left: 32px; }
+            .tab-logo { font-size: 15px; margin-right: 16px; }
+            .tab-btn { padding: 16px 14px; font-size: 13px; }
         }
     </style>
 </head>
 <body>
-    <div id="particles"></div>
 
-    <!-- ============ HERO SECTION ============ -->
-    <header class="hero-bg min-h-screen flex flex-col items-center justify-center relative px-4 py-20">
-        <div class="text-center max-w-4xl mx-auto">
-            <!-- Avatar -->
-            <div class="mb-8">
-                <div class="avatar-ring w-36 h-36 mx-auto">
-                    <div class="avatar-inner w-full h-full">
-                        <img src="./zaikuan-avatar.jpg" alt="在宽" class="w-full h-full object-cover" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=&quot;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:900;background:linear-gradient(135deg,#f97316,#8b5cf6);color:#fff;border-radius:50%&quot;>宽</div>'">
-                    </div>
-                </div>
-            </div>
+<!-- ============ SPLASH SCREEN ============ -->
+<div id="splash">
+    <canvas id="splash-canvas"></canvas>
+    <div class="splash-content" id="splash-text">
+        <div class="splash-title">Hello ZK's World</div>
+        <div class="splash-subtitle">心如自在，天地宽</div>
+    </div>
+    <button class="splash-enter-btn" id="splash-btn" onclick="enterApp()">进来看看吧</button>
+</div>
 
-            <!-- Name & Title -->
-            <h1 class="text-5xl md:text-7xl font-black mb-3 gradient-title leading-tight">在宽</h1>
-            <p class="text-lg md:text-xl text-gray-400 mb-1">李强 (zk) | 工号 19177</p>
-            <p class="text-base text-gray-500 mb-6">菜鸟集团CTO &middot; 产品技术部一号位 &middot; 无人车总经理</p>
-
-            <!-- Signature -->
-            <div class="mb-10">
-                <p class="signature-text">简单 &middot; 极致 &middot; 贴地 &middot; 疾飞</p>
-                <p class="text-sm text-gray-500 mt-2">欢迎加入菜鸟，一起打造全球物流产业互联网</p>
-            </div>
-
-            <!-- Stats -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-10">
-                <div class="glass-card p-5 text-center">
-                    <div class="stat-value">18</div>
-                    <div class="text-xs text-gray-500 mt-1">年阿里生涯</div>
-                </div>
-                <div class="glass-card p-5 text-center">
-                    <div class="stat-value" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;background-clip:text;">10+</div>
-                    <div class="text-xs text-gray-500 mt-1">年菜鸟深耕</div>
-                </div>
-                <div class="glass-card p-5 text-center">
-                    <div class="stat-value" style="background:linear-gradient(135deg,#10b981,#3b82f6);-webkit-background-clip:text;background-clip:text;">815</div>
-                    <div class="text-xs text-gray-500 mt-1">内网粉丝</div>
-                </div>
-                <div class="glass-card p-5 text-center">
-                    <div class="stat-value" style="background:linear-gradient(135deg,#ec4899,#8b5cf6);-webkit-background-clip:text;background-clip:text;">70</div>
-                    <div class="text-xs text-gray-500 mt-1">关注好友</div>
-                </div>
-            </div>
-
-            <!-- Tags -->
-            <div class="flex flex-wrap justify-center gap-2 mb-8">
-                <span class="tag">2008年加入阿里</span>
-                <span class="tag">全球化CTO</span>
-                <span class="tag">菜鸟CTO</span>
-                <span class="tag">无人车战略</span>
-                <span class="tag">达尔文勋章</span>
-                <span class="tag">算法</span>
-                <span class="tag">创新</span>
-                <span class="tag">思辩执行力</span>
-            </div>
+<!-- ============ MAIN APP ============ -->
+<div id="app">
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <div class="tab-nav-inner">
+            <div class="tab-logo">ZK's World</div>
+            <button class="tab-btn active" id="tab-guestbook" onclick="switchTab('guestbook')">留言墙</button>
+            <button class="tab-btn" id="tab-journey" onclick="switchTab('journey')">18岁的少年zk</button>
         </div>
+    </nav>
 
-        <!-- Scroll indicator -->
-        <div class="absolute bottom-8" style="animation: gentleBounce 2s ease-in-out infinite;">
-            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-            </svg>
+    <!-- ===== GUESTBOOK TAB ===== -->
+    <div id="panel-guestbook">
+        <div class="guestbook-container">
+            <div class="guestbook-header">
+                <h2>留言墙</h2>
+                <p>写下你想对zk说的话，留下你的祝福和回忆</p>
+            </div>
+
+            <!-- Message form -->
+            <div class="msg-form" id="msg-form">
+                <div class="msg-form-row">
+                    <input type="text" class="msg-input" id="msg-name" placeholder="你的名字（必填）" maxlength="30" style="flex:1;">
+                    <input type="text" class="msg-input" id="msg-dept" placeholder="部门 / 花名（选填）" maxlength="50" style="flex:1;">
+                </div>
+                <textarea class="msg-textarea" id="msg-content" placeholder="写下你想说的话..." maxlength="2000"></textarea>
+                <div class="msg-preview" id="msg-preview"></div>
+                <div class="msg-form-actions">
+                    <label class="msg-upload-btn" id="upload-img-label">
+                        <input type="file" accept="image/*" multiple hidden id="upload-img" onchange="handleFileUpload(event,'image')">
+                        📷 添加图片
+                    </label>
+                    <label class="msg-upload-btn">
+                        <input type="file" accept="video/*" hidden id="upload-vid" onchange="handleFileUpload(event,'video')">
+                        🎬 添加视频
+                    </label>
+                    <button class="msg-submit-btn" id="msg-submit" onclick="submitMessage()">发送留言</button>
+                </div>
+            </div>
+
+            <div class="msg-count" id="msg-count"></div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+                <span id="storage-mode" style="font-size:12px;color:#999;margin-right:auto;"></span>
+                <button onclick="exportMessages()" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">导出留言</button>
+                <button onclick="importMessages()" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">导入留言</button>
+            </div>
+
+            <!-- Messages list -->
+            <div id="msg-list"></div>
         </div>
-    </header>
+    </div>
 
-    <!-- ============ PROFILE CARD ============ -->
-    <section class="py-16 px-4">
-        <div class="max-w-3xl mx-auto reveal">
-            <h2 class="text-3xl font-bold text-center mb-10 gradient-title">阿里内外个人档案</h2>
-            <div class="profile-card rounded-2xl p-8">
-                <div class="grid md:grid-cols-2 gap-x-12 gap-y-1">
-                    <div class="info-item">
-                        <span class="info-label">姓名</span>
-                        <span class="info-value">李强</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">花名</span>
-                        <span class="info-value font-medium text-orange-400">在宽</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">工号</span>
-                        <span class="info-value">19177</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">英文名</span>
-                        <span class="info-value">zk</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">入职时间</span>
-                        <span class="info-value">2008-10-06</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">庆生日</span>
-                        <span class="info-value">08-09 (狮子座)</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">办公地点</span>
-                        <span class="info-value">杭州 &middot; 菜鸟总部园区 4-E-355</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">家乡</span>
-                        <span class="info-value">河北省张家口市阳原县</span>
+    <!-- ===== JOURNEY TAB ===== -->
+    <div id="panel-journey" style="display:none;">
+        <div class="journey-container">
+
+            <!-- Hero Card -->
+            <div class="hero-card reveal">
+                <div class="hero-avatar">
+                    <div class="hero-avatar-inner">
+                        <div class="hero-avatar-fallback">宽</div>
                     </div>
                 </div>
-                <div class="mt-6 pt-4 border-t border-white/5 flex flex-wrap gap-3 items-center">
-                    <span class="text-xs text-gray-500">内部标签：</span>
-                    <span class="tag" style="border-color:rgba(249,115,22,0.3);color:#f97316;">达尔文</span>
-                    <span class="tag" style="border-color:rgba(59,130,246,0.3);color:#3b82f6;">算法</span>
-                    <span class="tag" style="border-color:rgba(16,185,129,0.3);color:#10b981;">创新</span>
-                    <span class="tag" style="border-color:rgba(139,92,246,0.3);color:#8b5cf6;">思辩执行力</span>
-                    <span class="tag" style="border-color:rgba(236,72,153,0.3);color:#ec4899;">沟通</span>
-                </div>
-                <p class="text-xs text-gray-600 mt-4">数据来源：阿里内外个人主页 (work.alibaba-inc.com/nwpipe/u/19177)</p>
-            </div>
-        </div>
-    </section>
-
-    <div class="section-divider mx-auto max-w-4xl"></div>
-
-    <!-- ============ TIMELINE ============ -->
-    <section class="py-20 px-4">
-        <div class="max-w-5xl mx-auto">
-            <h2 class="text-3xl font-bold text-center mb-16 gradient-title reveal">职业生涯轨迹</h2>
-
-            <div class="relative">
-                <div class="timeline-line hidden md:block"></div>
-
-                <!-- 2008 -->
-                <div class="reveal flex flex-col md:flex-row items-start mb-20 relative">
-                    <div class="w-full md:w-1/2 md:pr-16 md:text-right mb-4 md:mb-0">
-                        <div class="glass-card p-6">
-                            <div class="year-label mb-3" style="background:rgba(249,115,22,0.15);color:#f97316;border:1px solid rgba(249,115,22,0.3);">2008.10</div>
-                            <h3 class="text-xl font-bold mb-2" style="color:#f97316;">加入阿里巴巴</h3>
-                            <p class="text-sm text-gray-400 leading-relaxed">工号19177，正式加入阿里巴巴集团。从此开始了长达18年的阿里生涯，投身电商和物流技术领域。</p>
-                        </div>
+                <div class="hero-name">在宽</div>
+                <div class="hero-id">李强 (zk) | 工号 19177</div>
+                <div class="hero-role">菜鸟集团CTO · 产品技术部一号位 · 无人车总经理</div>
+                <div class="hero-motto">简单 · 极致 · 贴地 · 疾飞</div>
+                <div class="hero-stats">
+                    <div class="hero-stat">
+                        <div class="hero-stat-value" style="color:#4facfe;">18</div>
+                        <div class="hero-stat-label">年阿里生涯</div>
                     </div>
-                    <div class="timeline-dot hidden md:block" style="border-color:#f97316;top:30px;"></div>
-                    <div class="w-full md:w-1/2 md:pl-16"></div>
-                </div>
-
-                <!-- 2013-2015 全球化 -->
-                <div class="reveal flex flex-col md:flex-row items-start mb-20 relative">
-                    <div class="w-full md:w-1/2 md:pr-16"></div>
-                    <div class="timeline-dot hidden md:block" style="border-color:#eab308;top:30px;"></div>
-                    <div class="w-full md:w-1/2 md:pl-16">
-                        <div class="glass-card p-6">
-                            <div class="year-label mb-3" style="background:rgba(234,179,8,0.15);color:#eab308;border:1px solid rgba(234,179,8,0.3);">2013-2015</div>
-                            <h3 class="text-xl font-bold mb-2" style="color:#eab308;">阿里巴巴集团全球化CTO</h3>
-                            <p class="text-sm text-gray-400 leading-relaxed">担任国际化中台事业部总经理，主导阿里全球化技术战略，支撑速卖通等国际业务的技术架构建设。</p>
-                            <div class="flex flex-wrap gap-2 mt-3">
-                                <span class="tag">全球化战略</span>
-                                <span class="tag">国际中台</span>
-                                <span class="tag">速卖通</span>
-                            </div>
-                        </div>
+                    <div class="hero-stat">
+                        <div class="hero-stat-value" style="color:#a18cd1;">10+</div>
+                        <div class="hero-stat-label">年菜鸟深耕</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="hero-stat-value" style="color:#43e97b;">815</div>
+                        <div class="hero-stat-label">内网粉丝</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="hero-stat-value" style="color:#ff7e5f;">70</div>
+                        <div class="hero-stat-label">关注好友</div>
                     </div>
                 </div>
-
-                <!-- 2015 加入菜鸟 -->
-                <div class="reveal flex flex-col md:flex-row items-start mb-20 relative">
-                    <div class="w-full md:w-1/2 md:pr-16 md:text-right mb-4 md:mb-0">
-                        <div class="glass-card p-6">
-                            <div class="year-label mb-3" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);">2015</div>
-                            <h3 class="text-xl font-bold mb-2" style="color:#10b981;">加入菜鸟网络</h3>
-                            <p class="text-sm text-gray-400 leading-relaxed">开始负责菜鸟技术、安全及设计，成为菜鸟技术体系的奠基人之一。从零搭建技术架构，为菜鸟后续的快速发展奠定基础。</p>
-                            <div class="flex flex-wrap justify-end gap-2 mt-3">
-                                <span class="tag">技术奠基</span>
-                                <span class="tag">安全体系</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="timeline-dot hidden md:block" style="border-color:#10b981;top:30px;"></div>
-                    <div class="w-full md:w-1/2 md:pl-16"></div>
-                </div>
-
-                <!-- 2017-2023 菜鸟CTO -->
-                <div class="reveal flex flex-col md:flex-row items-start mb-20 relative">
-                    <div class="w-full md:w-1/2 md:pr-16"></div>
-                    <div class="timeline-dot hidden md:block" style="border-color:#3b82f6;top:30px;"></div>
-                    <div class="w-full md:w-1/2 md:pl-16">
-                        <div class="glass-card p-6">
-                            <div class="year-label mb-3" style="background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);">2017-2023</div>
-                            <h3 class="text-xl font-bold mb-2" style="color:#3b82f6;">菜鸟集团CTO &middot; 产品技术部一号位</h3>
-                            <p class="text-sm text-gray-400 leading-relaxed">全面掌舵菜鸟技术战略，推动物流科技创新。主导物流自动化战略，用"组合技术的复利"思维推动AI+物流的落地实践。</p>
-                            <div class="flex flex-wrap gap-2 mt-3">
-                                <span class="tag">CTO</span>
-                                <span class="tag">物流科技</span>
-                                <span class="tag">AI+物流</span>
-                                <span class="tag">自动化</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2023-2025 无人车 -->
-                <div class="reveal flex flex-col md:flex-row items-start mb-20 relative">
-                    <div class="w-full md:w-1/2 md:pr-16 md:text-right mb-4 md:mb-0">
-                        <div class="glass-card p-6">
-                            <div class="year-label mb-3" style="background:rgba(139,92,246,0.15);color:#8b5cf6;border:1px solid rgba(139,92,246,0.3);">2023-2025</div>
-                            <h3 class="text-xl font-bold mb-2" style="color:#8b5cf6;">无人车总经理</h3>
-                            <p class="text-sm text-gray-400 leading-relaxed">小蛮驴业务转入菜鸟后，由在宽全面负责。开启阿里无人车"在宽时代"，主导无人车商业化战略，推动无人车向"拟人"载货机器人升级。</p>
-                            <div class="flex flex-wrap justify-end gap-2 mt-3">
-                                <span class="tag">无人车</span>
-                                <span class="tag">小蛮驴</span>
-                                <span class="tag">自动驾驶</span>
-                                <span class="tag">商业化</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="timeline-dot hidden md:block" style="border-color:#8b5cf6;top:30px;"></div>
-                    <div class="w-full md:w-1/2 md:pl-16"></div>
-                </div>
-
-                <!-- 2025 离开 -->
-                <div class="reveal flex flex-col md:flex-row items-start relative">
-                    <div class="w-full md:w-1/2 md:pr-16"></div>
-                    <div class="timeline-dot hidden md:block" style="border-color:#6b7280;top:30px;background:rgba(107,114,128,0.3);"></div>
-                    <div class="w-full md:w-1/2 md:pl-16">
-                        <div class="glass-card p-6" style="border-color:rgba(107,114,128,0.2);">
-                            <div class="year-label mb-3" style="background:rgba(107,114,128,0.15);color:#9ca3af;border:1px solid rgba(107,114,128,0.3);">2025</div>
-                            <h3 class="text-xl font-bold mb-2 text-gray-300">开启新篇章</h3>
-                            <p class="text-sm text-gray-500 leading-relaxed">18年阿里菜鸟生涯画上圆满句号。从工号19177到菜鸟CTO，在宽在阿里留下了深深的印记。</p>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </section>
-
-    <div class="section-divider mx-auto max-w-4xl"></div>
-
-    <!-- ============ QUOTES ============ -->
-    <section class="py-20 px-4">
-        <div class="max-w-4xl mx-auto">
-            <h2 class="text-3xl font-bold text-center mb-12 gradient-title reveal">技术理念与观点</h2>
-
-            <div class="grid md:grid-cols-2 gap-6">
-                <div class="reveal quote-card glass-card p-6" style="border-left-color:#3b82f6;">
-                    <p class="text-base italic mb-4 text-gray-300 leading-relaxed">"物流行业没有单一大杀器，应该追求<span style="color:#3b82f6;font-weight:500;">组合技术带来的复利</span>"</p>
-                    <p class="text-xs text-gray-600">2023年 新浪财经《科创100人》</p>
-                </div>
-
-                <div class="reveal quote-card glass-card p-6" style="border-left-color:#8b5cf6;">
-                    <p class="text-base italic mb-4 text-gray-300 leading-relaxed">"无人车需要经历三个阶段的竞争，未来将升级为<span style="color:#8b5cf6;font-weight:500;">'拟人'载货机器人</span>，实现自然对话"</p>
-                    <p class="text-xs text-gray-600">2025年 每日经济新闻</p>
-                </div>
-
-                <div class="reveal quote-card glass-card p-6" style="border-left-color:#10b981;">
-                    <p class="text-base italic mb-4 text-gray-300 leading-relaxed">"科学家也要<span style="color:#10b981;font-weight:500;">贴地飞行</span>，技术必须服务于业务价值"</p>
-                    <p class="text-xs text-gray-600">2021年 量子位</p>
-                </div>
-
-                <div class="reveal quote-card glass-card p-6" style="border-left-color:#f97316;">
-                    <p class="text-base italic mb-4 text-gray-300 leading-relaxed">"AI+物流助力快递网点<span style="color:#f97316;font-weight:500;">降本30%</span>"</p>
-                    <p class="text-xs text-gray-600">东南亚科技媒体署名文章</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <div class="section-divider mx-auto max-w-4xl"></div>
-
-    <!-- ============ ACHIEVEMENTS ============ -->
-    <section class="py-20 px-4">
-        <div class="max-w-5xl mx-auto">
-            <h2 class="text-3xl font-bold text-center mb-12 gradient-title reveal">主要成就与贡献</h2>
-
-            <div class="grid md:grid-cols-3 gap-5">
-                <div class="reveal glass-card p-6 text-center">
-                    <div class="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center" style="background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);">
-                        <svg class="w-7 h-7" style="color:#f97316;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <h3 class="text-base font-bold mb-2">全球化技术中台</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed">构建支撑阿里国际业务的技术中台，为速卖通等全球化业务奠定技术基础</p>
-                </div>
-
-                <div class="reveal glass-card p-6 text-center">
-                    <div class="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);">
-                        <svg class="w-7 h-7" style="color:#3b82f6;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                    </div>
-                    <h3 class="text-base font-bold mb-2">菜鸟技术体系</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed">从零搭建菜鸟技术、安全及设计体系，支撑菜鸟从初创到行业领先</p>
-                </div>
-
-                <div class="reveal glass-card p-6 text-center">
-                    <div class="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);">
-                        <svg class="w-7 h-7" style="color:#10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"></path></svg>
-                    </div>
-                    <h3 class="text-base font-bold mb-2">物流自动化战略</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed">主导菜鸟物流自动化战略，推动AI+物流在快递网点降本增效</p>
-                </div>
-
-                <div class="reveal glass-card p-6 text-center">
-                    <div class="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);">
-                        <svg class="w-7 h-7" style="color:#8b5cf6;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
-                    <h3 class="text-base font-bold mb-2">无人车商业化</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed">接手小蛮驴业务，推动阿里无人车从实验室走向规模化商业落地</p>
-                </div>
-
-                <div class="reveal glass-card p-6 text-center">
-                    <div class="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center" style="background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.2);">
-                        <svg class="w-7 h-7" style="color:#eab308;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    </div>
-                    <h3 class="text-base font-bold mb-2">技术团队建设</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed">培养数千人技术团队，打造了一支能打硬仗的物流科技铁军</p>
-                </div>
-
-                <div class="reveal glass-card p-6 text-center">
-                    <div class="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center" style="background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);">
-                        <svg class="w-7 h-7" style="color:#ec4899;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
-                    </div>
-                    <h3 class="text-base font-bold mb-2">行业影响力</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed">多次接受主流媒体采访，分享物流科技洞见，推动行业技术进步</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <div class="section-divider mx-auto max-w-4xl"></div>
-
-    <!-- ============ FORUM SECTION ============ -->
-    <section class="py-20 px-4" id="forum-section">
-        <div class="max-w-5xl mx-auto">
-            <div class="text-center reveal">
-                <h2 class="text-3xl font-bold mb-3 gradient-title">内部论坛足迹</h2>
-                <p class="text-sm text-gray-500 mb-8">在宽在"阿里味儿"和"菜鸟叽喳"论坛上的发言与互动记录（2010~2026）</p>
-            </div>
-
-            <!-- Stats row -->
-            <div class="reveal grid grid-cols-3 gap-4 max-w-xl mx-auto mb-10">
-                <div class="glass-card p-4 text-center">
-                    <div class="text-2xl font-black" style="color:#f97316;">69</div>
-                    <div class="text-xs text-gray-500 mt-1">相关帖子</div>
-                </div>
-                <div class="glass-card p-4 text-center">
-                    <div class="text-2xl font-black" style="color:#10b981;">51</div>
-                    <div class="text-xs text-gray-500 mt-1">菜鸟叽喳</div>
-                </div>
-                <div class="glass-card p-4 text-center">
-                    <div class="text-2xl font-black" style="color:#3b82f6;">18</div>
-                    <div class="text-xs text-gray-500 mt-1">阿里味儿</div>
+                <div class="hero-tags">
+                    <span class="hero-tag">2008年加入阿里</span>
+                    <span class="hero-tag">全球化CTO</span>
+                    <span class="hero-tag">菜鸟CTO</span>
+                    <span class="hero-tag">无人车战略</span>
+                    <span class="hero-tag">达尔文勋章</span>
+                    <span class="hero-tag">算法</span>
+                    <span class="hero-tag">创新</span>
                 </div>
             </div>
 
-            <!-- Filter bar -->
-            <div class="reveal flex flex-wrap items-center justify-center gap-3 mb-8">
-                <button onclick="filterForum('all')" id="filter-all" class="forum-filter-btn active" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#e5e7eb;padding:6px 18px;border-radius:20px;font-size:13px;cursor:pointer;transition:all 0.3s;">
-                    全部 <span style="opacity:0.5;margin-left:4px;">69</span>
-                </button>
-                <button onclick="filterForum('jizha')" id="filter-jizha" class="forum-filter-btn" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:#6ee7b7;padding:6px 18px;border-radius:20px;font-size:13px;cursor:pointer;transition:all 0.3s;">
-                    菜鸟叽喳 <span style="opacity:0.5;margin-left:4px;">51</span>
-                </button>
-                <button onclick="filterForum('alinei')" id="filter-alinei" class="forum-filter-btn" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);color:#93c5fd;padding:6px 18px;border-radius:20px;font-size:13px;cursor:pointer;transition:all 0.3s;">
-                    阿里味儿 <span style="opacity:0.5;margin-left:4px;">18</span>
-                </button>
-                <div style="position:relative;margin-left:8px;">
-                    <input type="text" id="forum-search" placeholder="搜索帖子..." oninput="searchForum(this.value)" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#e5e7eb;padding:6px 14px 6px 32px;border-radius:20px;font-size:13px;width:160px;outline:none;" onfocus="this.style.borderColor='rgba(255,255,255,0.25)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-                    <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:rgba(255,255,255,0.3);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <!-- Profile -->
+            <div class="profile-section reveal">
+                <div class="section-title">
+                    <div class="section-title-icon" style="background:rgba(79,172,254,0.1);">📋</div>
+                    阿里内外个人档案
+                </div>
+                <div class="profile-grid">
+                    <div class="profile-item"><span class="profile-label">姓名</span><span class="profile-value">李强</span></div>
+                    <div class="profile-item"><span class="profile-label">花名</span><span class="profile-value" style="color:#ff7e5f;font-weight:600;">在宽</span></div>
+                    <div class="profile-item"><span class="profile-label">工号</span><span class="profile-value">19177</span></div>
+                    <div class="profile-item"><span class="profile-label">英文名</span><span class="profile-value">zk</span></div>
+                    <div class="profile-item"><span class="profile-label">入职时间</span><span class="profile-value">2008-10-06</span></div>
+                    <div class="profile-item"><span class="profile-label">庆生日</span><span class="profile-value">08-09 (狮子座)</span></div>
+                    <div class="profile-item"><span class="profile-label">办公地点</span><span class="profile-value">杭州 · 菜鸟总部园区 4-E-355</span></div>
+                    <div class="profile-item"><span class="profile-label">家乡</span><span class="profile-value">河北省张家口市阳原县</span></div>
+                </div>
+                <div class="profile-tags">
+                    <span class="profile-tag" style="border-color:rgba(255,126,95,0.4);color:#ff7e5f;">达尔文</span>
+                    <span class="profile-tag" style="border-color:rgba(79,172,254,0.4);color:#4facfe;">算法</span>
+                    <span class="profile-tag" style="border-color:rgba(67,233,123,0.4);color:#2ecc71;">创新</span>
+                    <span class="profile-tag" style="border-color:rgba(161,140,209,0.4);color:#a18cd1;">思辩执行力</span>
+                    <span class="profile-tag" style="border-color:rgba(251,194,235,0.4);color:#e84393;">沟通</span>
+                </div>
+                <p style="font-size:11px;color:var(--text-light);margin-top:14px;">数据来源：阿里内外个人主页</p>
+            </div>
+
+            <!-- Timeline -->
+            <div class="section-title reveal" style="margin-bottom:24px;">
+                <div class="section-title-icon" style="background:rgba(67,233,123,0.1);">🚀</div>
+                职业生涯轨迹
+            </div>
+            <div class="timeline">
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot" style="border-color:#4facfe;"></div>
+                    <div class="timeline-card" style="border-left-color:#4facfe;">
+                        <div class="timeline-year" style="background:rgba(79,172,254,0.1);color:#4facfe;">2008.10</div>
+                        <div class="timeline-title" style="color:#4facfe;">加入阿里巴巴</div>
+                        <div class="timeline-desc">工号19177，正式加入阿里巴巴集团。从此开始了长达18年的阿里生涯，投身电商和物流技术领域。</div>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot" style="border-color:#f6d365;"></div>
+                    <div class="timeline-card" style="border-left-color:#f6d365;">
+                        <div class="timeline-year" style="background:rgba(246,211,101,0.1);color:#e17055;">2013-2015</div>
+                        <div class="timeline-title" style="color:#e17055;">阿里巴巴集团全球化CTO</div>
+                        <div class="timeline-desc">担任国际化中台事业部总经理，主导阿里全球化技术战略，支撑速卖通等国际业务的技术架构建设。</div>
+                        <div class="timeline-tags"><span class="timeline-tag">全球化战略</span><span class="timeline-tag">国际中台</span><span class="timeline-tag">速卖通</span></div>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot" style="border-color:#43e97b;"></div>
+                    <div class="timeline-card" style="border-left-color:#43e97b;">
+                        <div class="timeline-year" style="background:rgba(67,233,123,0.1);color:#00b894;">2015</div>
+                        <div class="timeline-title" style="color:#00b894;">加入菜鸟网络</div>
+                        <div class="timeline-desc">开始负责菜鸟技术、安全及设计，成为菜鸟技术体系的奠基人之一。从零搭建技术架构，为菜鸟后续的快速发展奠定基础。</div>
+                        <div class="timeline-tags"><span class="timeline-tag">技术奠基</span><span class="timeline-tag">安全体系</span></div>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot" style="border-color:#a18cd1;"></div>
+                    <div class="timeline-card" style="border-left-color:#a18cd1;">
+                        <div class="timeline-year" style="background:rgba(161,140,209,0.1);color:#6c5ce7;">2017-2023</div>
+                        <div class="timeline-title" style="color:#6c5ce7;">菜鸟集团CTO · 产品技术部一号位</div>
+                        <div class="timeline-desc">全面掌舵菜鸟技术战略，推动物流科技创新。主导物流自动化战略，用"组合技术的复利"思维推动AI+物流的落地实践。</div>
+                        <div class="timeline-tags"><span class="timeline-tag">CTO</span><span class="timeline-tag">物流科技</span><span class="timeline-tag">AI+物流</span><span class="timeline-tag">自动化</span></div>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot" style="border-color:#ff7e5f;"></div>
+                    <div class="timeline-card" style="border-left-color:#ff7e5f;">
+                        <div class="timeline-year" style="background:rgba(255,126,95,0.1);color:#ff7e5f;">2023-2025</div>
+                        <div class="timeline-title" style="color:#ff7e5f;">无人车总经理</div>
+                        <div class="timeline-desc">小蛮驴业务转入菜鸟后，由在宽全面负责。开启阿里无人车"在宽时代"，主导无人车商业化战略，推动无人车向"拟人"载货机器人升级。</div>
+                        <div class="timeline-tags"><span class="timeline-tag">无人车</span><span class="timeline-tag">小蛮驴</span><span class="timeline-tag">自动驾驶</span><span class="timeline-tag">商业化</span></div>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot" style="border-color:#b2bec3;background:#dfe6e9;"></div>
+                    <div class="timeline-card" style="border-left-color:#b2bec3;">
+                        <div class="timeline-year" style="background:rgba(178,190,195,0.1);color:#636e72;">2025</div>
+                        <div class="timeline-title" style="color:#636e72;">开启新篇章</div>
+                        <div class="timeline-desc">18年阿里菜鸟生涯画上圆满句号。从工号19177到菜鸟CTO，在宽在阿里留下了深深的印记。</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Posts container -->
-            <div id="forum-posts" class="space-y-3 reveal"></div>
-
-            <!-- Load more -->
-            <div id="forum-load-more" class="text-center mt-8 reveal" style="display:none;">
-                <button onclick="loadMorePosts()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#9ca3af;padding:8px 28px;border-radius:20px;font-size:13px;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                    加载更多
-                </button>
+            <!-- Quotes -->
+            <div class="section-title reveal" style="margin-bottom:24px;">
+                <div class="section-title-icon" style="background:rgba(251,194,235,0.15);">💬</div>
+                技术理念与观点
+            </div>
+            <div class="quotes-grid">
+                <div class="quote-card reveal" style="border-left-color:#4facfe;">
+                    <div class="quote-text">"物流行业没有单一大杀器，应该追求<span style="color:#4facfe;font-weight:600;">组合技术带来的复利</span>"</div>
+                    <div class="quote-source">2023年 新浪财经《科创100人》</div>
+                </div>
+                <div class="quote-card reveal" style="border-left-color:#a18cd1;">
+                    <div class="quote-text">"无人车需要经历三个阶段的竞争，未来将升级为<span style="color:#a18cd1;font-weight:600;">'拟人'载货机器人</span>，实现自然对话"</div>
+                    <div class="quote-source">2025年 每日经济新闻</div>
+                </div>
+                <div class="quote-card reveal" style="border-left-color:#43e97b;">
+                    <div class="quote-text">"科学家也要<span style="color:#00b894;font-weight:600;">贴地飞行</span>，技术必须服务于业务价值"</div>
+                    <div class="quote-source">2021年 量子位</div>
+                </div>
+                <div class="quote-card reveal" style="border-left-color:#ff7e5f;">
+                    <div class="quote-text">"AI+物流助力快递网点<span style="color:#ff7e5f;font-weight:600;">降本30%</span>"</div>
+                    <div class="quote-source">东南亚科技媒体署名文章</div>
+                </div>
             </div>
 
-            <!-- Empty state -->
-            <div id="forum-empty" class="text-center py-12" style="display:none;">
-                <p class="text-gray-600 text-sm">没有找到匹配的帖子</p>
+            <!-- Achievements -->
+            <div class="section-title reveal" style="margin-bottom:24px;">
+                <div class="section-title-icon" style="background:rgba(246,211,101,0.1);">🏆</div>
+                主要成就与贡献
+            </div>
+            <div class="achievement-grid">
+                <div class="achievement-card reveal">
+                    <div class="achievement-icon" style="background:rgba(79,172,254,0.1);">
+                        <svg width="24" height="24" style="color:#4facfe;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div class="achievement-title">全球化技术中台</div>
+                    <div class="achievement-desc">构建支撑阿里国际业务的技术中台，为速卖通等全球化业务奠定技术基础</div>
+                </div>
+                <div class="achievement-card reveal">
+                    <div class="achievement-icon" style="background:rgba(67,233,123,0.1);">
+                        <svg width="24" height="24" style="color:#2ecc71;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    </div>
+                    <div class="achievement-title">菜鸟技术体系</div>
+                    <div class="achievement-desc">从零搭建菜鸟技术、安全及设计体系，支撑菜鸟从初创到行业领先</div>
+                </div>
+                <div class="achievement-card reveal">
+                    <div class="achievement-icon" style="background:rgba(161,140,209,0.1);">
+                        <svg width="24" height="24" style="color:#a18cd1;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div class="achievement-title">无人车商业化</div>
+                    <div class="achievement-desc">接手小蛮驴业务，推动阿里无人车从实验室走向规模化商业落地</div>
+                </div>
+                <div class="achievement-card reveal">
+                    <div class="achievement-icon" style="background:rgba(255,126,95,0.1);">
+                        <svg width="24" height="24" style="color:#ff7e5f;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                    </div>
+                    <div class="achievement-title">物流自动化战略</div>
+                    <div class="achievement-desc">主导菜鸟物流自动化战略，推动AI+物流在快递网点降本增效</div>
+                </div>
+                <div class="achievement-card reveal">
+                    <div class="achievement-icon" style="background:rgba(246,211,101,0.1);">
+                        <svg width="24" height="24" style="color:#e17055;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    </div>
+                    <div class="achievement-title">技术团队建设</div>
+                    <div class="achievement-desc">培养数千人技术团队，打造了一支能打硬仗的物流科技铁军</div>
+                </div>
+                <div class="achievement-card reveal">
+                    <div class="achievement-icon" style="background:rgba(251,194,235,0.15);">
+                        <svg width="24" height="24" style="color:#e84393;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                    </div>
+                    <div class="achievement-title">行业影响力</div>
+                    <div class="achievement-desc">多次接受主流媒体采访，分享物流科技洞见，推动行业技术进步</div>
+                </div>
             </div>
 
-            <p class="text-xs text-gray-700 text-center mt-10">数据来源：阿里内外搜索 (work.alibaba-inc.com) / 菜鸟叽喳 (cainiao-inc.com) &middot; 通过Tampermonkey脚本自动采集</p>
-        </div>
-    </section>
+            <!-- Forum section -->
+            <div class="section-title reveal" style="margin-bottom:24px;">
+                <div class="section-title-icon" style="background:rgba(67,233,123,0.1);">📝</div>
+                内部论坛足迹
+            </div>
+            <p class="reveal" style="text-align:center;font-size:13px;color:var(--text-light);margin-bottom:20px;">在宽在"阿里味儿"和"菜鸟叽喳"论坛上的发言与互动记录（2010~2026）</p>
 
-    <div class="section-divider mx-auto max-w-4xl"></div>
+            <div class="forum-stats reveal">
+                <div class="forum-stat-card"><div class="forum-stat-val" style="color:#ff7e5f;">69</div><div class="forum-stat-lbl">相关帖子</div></div>
+                <div class="forum-stat-card"><div class="forum-stat-val" style="color:#2ecc71;">51</div><div class="forum-stat-lbl">菜鸟叽喳</div></div>
+                <div class="forum-stat-card"><div class="forum-stat-val" style="color:#4facfe;">18</div><div class="forum-stat-lbl">阿里味儿</div></div>
+            </div>
 
-    <!-- ============ FAREWELL ============ -->
-    <section class="py-20 px-4">
-        <div class="max-w-3xl mx-auto text-center reveal">
-            <h2 class="text-3xl font-bold mb-10 gradient-title">致敬 18 年</h2>
-            <div class="glass-card p-10">
-                <p class="text-base leading-loose text-gray-400 mb-6">
+            <div class="forum-filters reveal">
+                <button onclick="filterForum('all')" id="ff-all" class="forum-filter-btn active">全部 <span style="opacity:0.5;margin-left:4px;">69</span></button>
+                <button onclick="filterForum('jizha')" id="ff-jizha" class="forum-filter-btn">菜鸟叽喳 <span style="opacity:0.5;margin-left:4px;">51</span></button>
+                <button onclick="filterForum('alinei')" id="ff-alinei" class="forum-filter-btn">阿里味儿 <span style="opacity:0.5;margin-left:4px;">18</span></button>
+                <div class="forum-search-wrap">
+                    <svg class="forum-search-icon" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="text" class="forum-search" id="forum-search-input" placeholder="搜索帖子..." oninput="searchForum(this.value)">
+                </div>
+            </div>
+
+            <div id="forum-posts-container" class="reveal"></div>
+            <div id="forum-loadmore-wrap" class="forum-loadmore" style="display:none;">
+                <button onclick="loadMorePosts()">加载更多</button>
+            </div>
+            <div id="forum-empty" class="msg-empty" style="display:none;">
+                <div class="msg-empty-icon">🔍</div>
+                <p>没有找到匹配的帖子</p>
+            </div>
+            <p class="reveal" style="font-size:11px;color:var(--text-light);text-align:center;margin-top:24px;">数据来源：阿里内外搜索 / 菜鸟叽喳 · 通过Tampermonkey脚本自动采集</p>
+
+            <!-- Farewell -->
+            <div style="margin-top:48px;"></div>
+            <div class="farewell-card reveal">
+                <div class="farewell-text">
                     从 2008 年 10 月 6 日入职，到 2025 年即将离开，<br>
-                    在宽用 <span style="color:#f97316;font-weight:600;">6570+ 天</span> 的时间，<br>
+                    在宽用 <span class="farewell-highlight" style="color:#4facfe;">6570+ 天</span> 的时间，<br>
                     见证了阿里从电商巨头到科技帝国的蜕变，<br>
                     也亲历了菜鸟从 0 到 1 再到行业领军者的成长。
-                </p>
-                <p class="text-base leading-loose text-gray-400 mb-6">
-                    从全球化CTO到菜鸟CTO，从国际化中台到无人车战略，<br>
-                    他始终站在技术创新的前沿，<br>
-                    用 <span style="color:#3b82f6;font-weight:600;">组合技术的复利</span> 思维，<br>
-                    推动着物流科技的边界不断拓展。
-                </p>
-                <div class="my-8">
-                    <p class="signature-text" style="letter-spacing:12px;font-size:24px;">简单 &middot; 极致 &middot; 贴地 &middot; 疾飞</p>
                 </div>
-                <p class="text-sm text-gray-600 italic">
+                <div style="margin:24px 0;">
+                    <div class="farewell-text">
+                        从全球化CTO到菜鸟CTO，从国际化中台到无人车战略，<br>
+                        他始终站在技术创新的前沿，<br>
+                        用 <span class="farewell-highlight" style="color:#a18cd1;">组合技术的复利</span> 思维，<br>
+                        推动着物流科技的边界不断拓展。
+                    </div>
+                </div>
+                <div class="farewell-motto">简单 · 极致 · 贴地 · 疾飞</div>
+                <div class="farewell-end">
                     河北阳原走出的"贴地飞行"科学家，<br>
                     祝前程似锦，未来可期。
-                </p>
+                </div>
             </div>
+
         </div>
-    </section>
+    </div>
 
-    <!-- ============ FOOTER ============ -->
-    <footer class="py-10 px-4 text-center">
-        <div class="section-divider mx-auto max-w-4xl mb-8"></div>
-        <p class="text-xs text-gray-700">本页面基于公开资料及阿里内外个人主页信息整理</p>
-        <p class="text-xs text-gray-800 mt-1">数据最后更新：2025年3月</p>
-    </footer>
+    <div class="page-footer">
+        <p>本页面基于公开资料及阿里内外个人主页信息整理</p>
+        <p style="margin-top:4px;">数据最后更新：2025年3月</p>
+    </div>
+</div>
 
-    <script>
-        // Particles
-        (function() {
-            const c = document.getElementById('particles');
-            for (let i = 0; i < 30; i++) {
-                const p = document.createElement('div');
-                p.className = 'particle';
-                p.style.left = Math.random() * 100 + 'vw';
-                p.style.animationDelay = Math.random() * 20 + 's';
-                p.style.animationDuration = (15 + Math.random() * 10) + 's';
-                c.appendChild(p);
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+    <img id="lightbox-img" src="" alt="">
+</div>
+
+<script>
+// ============ SPLASH SCREEN PARTICLE ANIMATION ============
+(function() {
+    const canvas = document.getElementById('splash-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, particles = [], textParticles = [], phase = 0;
+    const chars = '01{}();=>function const let var if else return import export class async await for while true false null undefined console.log require module'.split('');
+    const colors = ['#4facfe','#00f2fe','#43e97b','#f6d365','#ff7e5f','#a18cd1','#fbc2eb','#feb47b'];
+
+    function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Generate text particle positions
+    function getTextPositions(text, fontSize, yOffset) {
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = W;
+        offCanvas.height = H;
+        const offCtx = offCanvas.getContext('2d');
+        offCtx.fillStyle = '#fff';
+        offCtx.font = `bold ${fontSize}px Outfit, sans-serif`;
+        offCtx.textAlign = 'center';
+        offCtx.textBaseline = 'middle';
+        offCtx.fillText(text, W/2, H/2 + yOffset);
+
+        const imageData = offCtx.getImageData(0, 0, W, H);
+        const positions = [];
+        const gap = Math.max(3, Math.floor(W / 320));
+        for (let y = 0; y < H; y += gap) {
+            for (let x = 0; x < W; x += gap) {
+                if (imageData.data[(y * W + x) * 4 + 3] > 128) {
+                    positions.push({ x, y });
+                }
             }
-        })();
-
-        // Scroll reveal
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
-            });
-        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-
-        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-    </script>
-
-    <script>
-        // ========= Forum Data & Logic =========
-        const FORUM_POSTS = [{"title": "是时候让你的价值被看见、被使用、被传承了【含万霖视频】", "content": "嘿，亲爱的菜鸟小伙伴们～ 你们可能没注意到，但在大家一点一滴的努力下，我们的知识库已经悄悄完成了一次“华丽转身”——从“有文档就行”，升级到了“好文档才够”！👏 来看看万霖和在宽怎么说（记得看视频哦", "author": "菜鸟产品技术部", "time": "03-02 16:33", "url": "", "platform": "jizha"}, {"title": "🎉 产技新春团圆｜云端联欢、文化发布、惊喜不断！", "content": "🎁评论有礼，快来参与～ 评论区留下你的新年祝福语 截至2月23日，点赞前5名可以获得新年快乐桶一个噢～新年我们一起喜气洋洋呀😄 🐎 一马当先｜云端团圆，年味启程一条AI制作的、充满全球化风格的、", "author": "菜鸟产品技术部", "time": "02-11 09:47", "url": "", "platform": "jizha"}, {"title": "“我是真的相信。”——「在宽面对面」第15期 双旦特别实录", "content": "🎁有奖评论🎁 评论点赞数只需大于5，前20位同学 即可收获“你说得太6了”奖励1份哦（66菜籽） （时间截至1月16日12:00） 最近一段时间，在宽几乎成了会说话的人型AI广告牌，任何场景里，三", "author": "菜鸟产品技术部", "time": "01-06 12:00", "url": "", "platform": "jizha"}, {"title": "史上第一次！想说说天地会同学变成圣诞老人，给我过三年醇这件事", "content": "饱含惊喜的我，略带害羞的他 产技三年醇的现场，在宽就这么戴上胡子，背上礼物袋，揣着心意 红红火火地来了！！！ 这么多年过去了，我终于知道  “妈妈，圣诞老人是真的”！  ✨ 快问快答：一句话，三年", "author": "菜鸟产品技术部", "time": "2025-12-29 10:26", "url": "", "platform": "jizha"}, {"title": "回头看，轻舟已过万重山丨🎆菜鸟2025年7-12月中国大区五年陈仪式顺利举办", "content": "五年，是我们走过的日常 2025年12月31日，正值岁末，约200位菜鸟五年陈同学在总部园区报告厅温暖相聚，共同度过了自己的五年陈仪式，也一齐庆祝新年。  五年，是三百多次日升月落，是通勤路上熟悉的", "author": "菜小鸟", "time": "2025-12-26 13:40", "url": "", "platform": "jizha"}, {"title": "致敬每一位并肩作战的你｜菜鸟产品技术部双11复盘会", "content": "12月19日，菜鸟产品技术部召开2025双11及黑五复盘会 聚焦大促保障季的关键战役，系统回顾双11全周期技术护航历程，通过“小胜即庆”仪式 向所有默默奋战在产品与技术一线的同学致以诚挚感谢！ 在宽", "author": "菜鸟产品技术部", "time": "2025-12-22 12:19", "url": "", "platform": "jizha"}, {"title": "（已开奖）万霖：业务增长显著，提升体验会让员工感受到公司的增长 丨万霖下午茶Vol.42", "content": "本期参与同学：@世石@淼秒@梓山@说客@卡奇@立白@弟安@瓦龙@居蓝@佬饕  12月4日下午，万霖与10位菜鸟同学在菜鸟总部园区展开深度对话，围绕组织与激励、战略方向、执行与运营、AI技术与创新、管", "author": "菜小鸟", "time": "2025-12-12 09:58", "url": "", "platform": "jizha"}, {"title": "0 day不是梦！做AI时代的快企业！快个人！ ——AI ToolKits 正式发布！", "content": "0 day不是梦！做AI时代的快企业！快个人！ AI ToolKits 正式发布！ 12月4日，历经两个月集中攻坚，菜鸟AI平台战略级项目——AI ToolKits 正式发布！发布会全面展示平台能力，", "author": "菜鸟产品技术部", "time": "2025-12-05 10:04", "url": "", "platform": "jizha"}, {"title": "☕️「在宽面对面」第14期：“核心的目标是把AI用到最好，敢想敢试，别怕错！”", "content": "11月，在宽和10位产技同学围绕AI专题，展开了一场畅所欲言的线下对谈，以下为完整实录。 参与人 | 书娴、佬方、子钦、笑鲲、灵六、岱夫、修熠、光眀、渡幻、四季    第一节 关于AI，菜鸟、阿里、外", "author": "菜鸟产品技术部", "time": "2025-11-19 15:48", "url": "", "platform": "jizha"}, {"title": "原来是他们！AI Coding首轮四位先锋出炉～", "content": "原来是他们！AI Coding首轮四位先锋出炉～▍在宽：勇敢探索，不要有对过去的包袱，多提需求和建议 11月12日，菜鸟产技第一期『AI Coding品码会』热烈开启！来自西安开发中心的辛宗、康佳星、", "author": "菜鸟产品技术部", "time": "2025-11-17 19:34", "url": "", "platform": "jizha"}, {"title": "产技10月刊｜月度重点资讯，一手掌握！", "content": "简单极致、贴地疾飞！本期共有43位同学成为“产技四侠”，快来一睹四侠们的风采吧！  👉点击此处查看全部内容  AI好服务，全球稳定赢！菜鸟产技军团以“稳”制胜，护航大促每一秒！双11大促期间系统", "author": "菜鸟产品技术部", "time": "2025-11-17 19:28", "url": "", "platform": "jizha"}, {"title": "【一峰，稳！】FY26双11大促一峰，产技军团“稳稳”通过首轮大战！", "content": "【一峰，稳！】FY26双11大促一峰，产技军团“稳稳”通过首轮大战！ 「AI好服务 全球稳定赢」10月20日20:00，FY26双11大促一峰正式打响！近百人产技军团早已整装集结，红色战袍整齐列阵，士", "author": "菜鸟产品技术部", "time": "2025-11-04 10:54", "url": "", "platform": "jizha"}, {"title": "Q2外单增长亮眼，大促正是丰收的季节！丨第25届管理者大会召开", "content": "Q2外单增长亮眼，多个关键战役取得突破 10月28日，“飞越山海”菜鸟第二十五届管理者大会在杭州总部园区开启。在过去的Q2，尽管我们遭遇了内外部的诸多挑战，菜鸟仍然取得了许多不错的进展：外单增长亮眼，", "author": "菜小鸟", "time": "2025-10-28 19:02", "url": "", "platform": "jizha"}, {"title": "", "content": "【菜鸟1024产技节】菜包AI创新大赛 获奖团队揭晓「菜包 AI」创新大赛由全民 AI 项目组主办，旨在以 AI 驱动创新，提升业务效率并挖掘可落地的 AI 应用场景。大赛提供了一个展示创意、分享 AI 应用实践与 AI Agent 解决方案的阵地。 本次大赛共吸引参赛总人数 455 人。共提交了 153 个作品，在 1024 技术节决赛当天，有幸邀请到 战略与商分部负责人 世誉、全球供应链事业部负责人 寒帅、菜鸟CTO 在宽、产技HR负责人&中后台HR负责人 东芜、跨境物流&平台产品技术负责人 毕啸 作为决赛评委。 「菜包AI」创新大赛·获奖团队揭晓人气爆棚奖 作品 成员 部门 不动产综管催", "author": "", "time": "2025-10-27 09:43", "url": "https://www.aliway.com/read.php?tid=3350208", "platform": "alinei"}, {"title": "🔥燃到骨子里！1024产技节竞技运动会：趣味拉满、拔河狂飙，冠亚季军亮身份！", "content": "10月23日晚的东庭院，彻底被产技人的热血与笑声“点燃”啦！1024产技节竞技运动会落下帷幕，趣味赛场拼默契、拔河赛场拼韧劲，惊喜明星赛都藏满名场面，现在就解锁所有高光时刻！ 第一弹：趣味赛场，积分", "author": "菜鸟产品技术部", "time": "2025-10-24 18:59", "url": "", "platform": "jizha"}, {"title": "「当燃·热AI」FY26 菜鸟1024产技节@AI Anywhere启动会全景回顾来袭！", "content": "前一晚东庭院运动会的热血余韵仍在，10月24日的中庭已被“热AI”点燃——从上午AI大赛八强的脑力碰撞，到中午启动会的重磅发布，再到荣誉颁奖与暖心彩蛋，全天亮点密集，让我们一起跟随镜头回顾这精彩的一", "author": "菜鸟产品技术部", "time": "2025-10-24 18:50", "url": "", "platform": "jizha"}, {"title": "「菜包AI」创新大赛决赛&颁奖回顾", "content": "「菜包AI」创新大赛·决赛评委本次大赛共吸引参赛总人数 455 人。共提交了 153 个作品，业务创意赛道提交 44 个，AI 实践案例赛道提交 64 个，AI Agent赛道提交 45 个。 在", "author": "菜鸟产品技术部", "time": "2025-10-24 14:53", "url": "", "platform": "jizha"}, {"title": "FY26 双11大促产技军团KO&第一次全链路压测通过！", "content": "“AI好服务，全球稳定赢！”9月25日， FY26菜鸟产品技术部双11战役正式启幕，产技军团全员集结、严阵以待，以攻坚姿态开启新征程的挑战。当日，产技军团FY26双11首次全链路压测通过✅，打响双", "author": "菜鸟产品技术部", "time": "2025-09-28 10:24", "url": "", "platform": "jizha"}, {"title": "FY26 双11大促产技军团KO&第一次全链路压测通过！", "content": "“AI好服务，全球稳定赢！”9月25日， FY26菜鸟产品技术部双11战役正式启幕，产技军团全员集结、严阵以待，以攻坚姿态开启新征程的挑战。当日，产技军团FY26双11首次全链路压测通过✅，打响双1", "author": "赵丽杲(栗糕)", "time": "2025-09-28 10:18", "url": "", "platform": "jizha"}, {"title": "苏皖大区-马鞍山洗护仓-小草莓提名", "content": "被提名人：李强 部门：马鞍山洗护仓 关键词：认真负责 提名理由： 在日常工作中，李强同学对待工作一丝不苟，始终以严谨的态度完成每一项任务。面对任务分配，李强同学从不推诿，以高效的执行力和坚决的落实态度", "author": "汤珍珍(林穗)", "time": "2025-09-26 15:26", "url": "", "platform": "jizha"}, {"title": "【产技】这一年员工体验上你有什么感受", "content": "结合去年8月的员工体验调研情况，重点围绕“高效办公”、“成长发展”、“专业人群”、“组织文化”等维度进行改进，一起来看看产技这一年都做了哪些事。 ▍搭建文档机制，提升文档沉淀和查找便利性，工作提效✅", "author": "段燕(以寒)", "time": "2025-09-02 11:06", "url": "", "platform": "jizha"}, {"title": "【在宽面对面】第13期", "content": "引言：Q1菜鸟目标全绿达成，离不开每位菜鸟同学的努力与付出，进入Q2，仍然需要继续全力以赴。变化带来新机遇和未知的挑战，我们要如何更好的应对？本期《在宽面对面》围绕着大家的真实感受，9", "author": "菜鸟产品技术部", "time": "2025-08-20 14:49", "url": "", "platform": "jizha"}, {"title": "FY26菜鸟产品技术部雏鹰特训营圆满落幕", "content": "🌟雏鹰振翅，启航未来 | 产品技术部雏鹰特训营圆满落幕在这个充满希望与成长的季节里，我们共同见证了“雏鹰特训营”的精彩篇章。 从线上学习到线下集训，从课堂理论到实战演练，这一路走来，每一位同学都以", "author": "李琦", "time": "2025-08-14 17:10", "url": "", "platform": "jizha"}, {"title": "万霖：敢想敢做，永远保持好奇心！丨百鸟天地会圆桌实录", "content": "7月中旬，180多位校招生在菜鸟总部园区与万霖、刘红、在宽、乘云进行了面对面交流，主要内容围绕技术应用、校招生发展与职场适应、心态调节三大方向。以下为交流内容实录：  AI技术与流程高效同学：我来自", "author": "菜小鸟", "time": "2025-08-07 10:26", "url": "", "platform": "jizha"}, {"title": "现在向你迎面走来的是最强收租天团！牛仔很忙，唱得响亮 | 袭榜好声音", "content": "钥匙、墨镜、牛仔帽 这不是西部牛仔而是收租三件套 高科技和新能源，统统不是问题 最帅包租公少丘已开麦：地网欢迎你，一起创奇迹！ 菜鸟好声音，音WE有你，满租可期！ 即日起来话题区上传好声音，或给帖子", "author": "菜小鸟", "time": "2025-07-25 13:04", "url": "", "platform": "jizha"}, {"title": "撕夜-李强-中国快递事业部-华北分拨区-天津一级分拨", "content": "所属部门：菜鸟集团-中国快递事业部-华北分拨区-天津一级分拨-天津一级分拨装车组 参赛选手：李强（李杨） 参赛作品：撕夜 一起为他加油吧", "author": "中国快递事业部-华北分拨区", "time": "2025-07-25 09:51", "url": "", "platform": "jizha"}, {"title": "翻开青春这本修炼手册，上面写满了“你今天有没有唱歌”？｜袭榜好声音", "content": "“生活和工作，就像人的左手和右手…” “左边，跟我一起画个龙；在你右边，画一道彩虹？” 以上为错误示范，正确的打开方式就是—— 和刘红一起，打开菜鸟这本最美的青春修炼手册 菜鸟好声音，音WE有你，未", "author": "菜小鸟", "time": "2025-07-24 15:49", "url": "", "platform": "jizha"}, {"title": "好声音开始后，财务同学的计算器上都出现了同一个数字... ｜ 袭榜好声音", "content": "“听说自从好声音开始后，财务同学的计算器都自动变身了” “变身？咋变的？” 他们的计算器上只剩下一个数字了——那就是第1️⃣ “卷王”团队来袭，一起来听申花放出的最动听狠话！ 菜鸟好声音，音WE有你", "author": "菜小鸟", "time": "2025-07-24 10:17", "url": "", "platform": "jizha"}, {"title": "人工智能bistro主理人来了：在宽为菜鸟AI代言打Call！｜袭榜好声音", "content": "今年最火的是什么？当然是AI啦，没用过的人还存在吗？ 菜鸟也有自己的AI吗？对呀，你没听过吗？ 没听过的话，就来听听主理人在宽怎么说—— 打开外放，超酷天团怒飙中音摔吉他 菜鸟好声音，音WE有你，A", "author": "菜小鸟", "time": "2025-07-23 11:16", "url": "", "platform": "jizha"}, {"title": "“山海无阻，迎篮而上”——FY26产技篮球赛总决赛之夜精彩回顾！", "content": "盛夏，骄阳似火青春如歌，7支队伍历经11场精彩纷呈的小组赛和半决赛。7月9日晚，迎来总决赛之夜，冠亚季军队伍将在此诞生！ 🎉恭喜来自自动驾驶中心的放宽心队夺得冠军！  🎉恭喜来自海外&国内快递产", "author": "菜鸟产品技术部", "time": "2025-07-10 18:15", "url": "", "platform": "jizha"}, {"title": "菜鸟成为亚太覆盖最广中资物流企业 | 菜鸟周报189期", "content": "🎁文末互动🎁 👉想在周报直播上看到啥？分享你的大胆的想法！👈 👉点这里观看直播回放！ 菜鸟周报189期 菜鸟全球供应链再升级：亚太仓配网络覆盖10个国家地区 菜鸟跨境物流团队“首公里安检数字", "author": "周报君", "time": "2025-07-10 11:36", "url": "", "platform": "jizha"}, {"title": "快讯：菜鸟与申通快递达成无人车合作，助力申通快递冲刺年内用车2000辆目标", "content": "7月8日，申通快递与菜鸟无人车达成战略合作。双方将聚焦末端配送场景，加速无人配送规模化应用，并联合探索适配多场景的新车型与模式。此次合作是申通继6月底客户开放日首次披露“年内投运2000 台无人车”", "author": "行业动态小助手", "time": "2025-07-08 17:12", "url": "", "platform": "jizha"}, {"title": "我们是一支想赢、也能赢的团队，这是菜鸟这12年沉淀下来最宝贵的财富 | 菜鸟2025年1-6月中国大区五年陈仪式", "content": "6月30日下午，中国大区共140余名五年陈同学在杭州总部园区温暖相聚，共同迎接这一美好时刻。 光阴流转，五年记录下了一路的荆棘与芬芳； 并肩相伴，五年让我们成为彼此眼中最好的自己。 五年，因爱而美好", "author": "菜小鸟", "time": "2025-07-01 09:41", "url": "", "platform": "jizha"}, {"title": "中国快递事业部-Morning Call-徐光煜", "content": "各位同学、各位伙伴，大家上午好！我是来自菜鸟集团中国快递事业部津冀业务区运营管理组的徐光煜，花名：自本，坚持自己的本心。非常高兴在今天的Morning Call和大家分享。刚刚打开阿里郎", "author": "徐光煜(自本)", "time": "2025-06-25 15:19", "url": "", "platform": "jizha"}, {"title": "家人们，来帮宽哥卖车了：年轻人的第一台智能座驾需要你超大胆的想法", "content": "为无人车GT-Lite上线打call！ 转发官方预售信息至朋友圈，助力菜鸟大卖哦 https://mp.weixin.qq.com/s/gZS2WGrh20fkSe9ddqf0iA （本文部分内容为C", "author": "哆啦C梦", "time": "2025-06-23 09:40", "url": "", "platform": "jizha"}, {"title": "【华北大区-沈阳商超仓】618第二波有劲少年", "content": "沈阳猫超618加劲儿小报，持续输出中 干劲-拆零叉车李帅干劲-拆零补货孙成实韧劲-拆零拣货王博干劲-拆零包装王佳伟韧劲-整箱拣货李强狠劲-整箱立库张小骞干劲-生产计划祖晓彤每一滴汗水都是勋章，每一份", "author": "李雪(莯芯)", "time": "2025-06-03 17:20", "url": "", "platform": "jizha"}, {"title": "产技4月刊｜月度重点资讯，一手掌握！", "content": "4月9日，“山海无阻，向阳而生”菜鸟产品技术部FY26全员大会在菜鸟总部园区报告厅盛大启幕！1200名同学齐聚现场，共同迎接新一年的挑战与机遇。在这里，我们整装待发、坚定信念、共同启航！>>点击阅", "author": "菜鸟产品技术部", "time": "2025-05-15 17:17", "url": "", "platform": "jizha"}, {"title": "【在宽面对面】第12期", "content": "引言：新财年开启，围绕产技和菜鸟的方向、目标、前景是什么？我们要去哪儿？又要做些什么？在过程中是否有什么迷茫和困惑，本期《在宽面对面》围绕着一系列调整和变化，12位同学与在宽一起展开了深入的", "author": "菜鸟产品技术部", "time": "2025-05-06 14:07", "url": "", "platform": "jizha"}, {"title": "[华北大区-直营天津恒安项目仓]--小草莓提报", "content": "🍓部门：直营天津西青恒安项目仓 🍓关键词：客户第一有践行 🍓李强同学是恒安仓内的“开仓元老”，恒安新开仓时李强积极主动承担了入库部退货岗位的职责，在收货部人员缺少的时候，他主动负责收退两组工", "author": "武瑶", "time": "2025-04-23 11:41", "url": "", "platform": "jizha"}, {"title": "山海无阻 向阳而生｜菜鸟产品技术部FY26全员大会精彩回顾！", "content": "菜鸟产品技术部FY26全员大会精彩回顾！ 4月9日，“山海无阻，向阳而生”菜鸟产品技术部FY26全员大会在菜鸟总部园区报告厅盛大启幕！1200名同学齐聚现场，共同迎接新一年的挑战与机遇。在这里，我们整", "author": "菜鸟产品技术部", "time": "2025-04-10 17:53", "url": "", "platform": "jizha"}, {"title": "【技术高一筹团队奖】全民AI", "content": "全民AI项目   项目成员： 「菜鸟首届AI马拉松」在宽 东芜 骁遥 靖宇 苏媚  兰博 南派 已晨 杨诺 语文 殊未 清溺 马少帅  陌柒 多马 景千 邵念乐 李梦 胡明坤   茳莱 葛钧 雷娇等", "author": "吴蔚(雷娇)", "time": "2025-03-31 19:50", "url": "", "platform": "jizha"}, {"title": "【技高一筹】数据一号工程战役", "content": "提名项目组数据一号工程项目组 项目成员平台侧：兰博、毕啸、雨玟、敦浩、田单、鸿翊、天余、欢见、贝书、清溺、齐艺、予歆、来凡 纵向数据团队：墨逐、书娴、龙磐、千鸣、青凝、李亮、非乐、修真、弘玄、岚菲等团", "author": "刘祥平(敦浩)", "time": "2025-03-26 17:24", "url": "", "platform": "jizha"}, {"title": "技高一筹团队奖：AI提效100W小时项目组", "content": "提名理由： 在2024年的生成式AI浪潮中，我们继续秉持菜鸟“低成本解决实际问题”的技术理念，坚定、集中地切入【企业toB AI应用】这个方向，持续捕获世界最佳模型与技术框架，应用到菜鸟具体的场景中去", "author": "张舒昱(殊未)", "time": "2025-03-26 15:11", "url": "", "platform": "jizha"}, {"title": "0317行业动态「阿里拟减持圆通套现9.5亿」「笨鸟速运官宣启网」", "content": "｜ 导读 阿里拟减持圆通套现9.5亿 极兔接入Deepseek大模型 山东邮管局印发通知今年无人快递车应用至少1500辆 笨鸟速运官宣启网 丰翼正式启动日本无人机物流业务 欧洲快递公司Geopost", "author": "行业动态小助手", "time": "2025-03-17 13:30", "url": "", "platform": "jizha"}, {"title": "【技术战略速递-快讯】民营企业座谈会上的讲话 含解读", "content": "「眼界」专注于扩容技术视野，探讨和交流技术领域的新趋势、新技术、新产品，提供洞见和启发。分为两类主题，一类是眼界线下场，包括深度对话、实地参访、游学等，一类是线上资讯「技术战略速递」，提供最新资讯", "author": "吴蔚(雷娇)", "time": "2025-02-18 13:45", "url": "", "platform": "jizha"}, {"title": "智创全球，蛇我其谁——菜鸟产技新春全球云年会全景回顾来袭！", "content": "伴随蛇年的脚步，蓊郁的春意扑面而来，1月20日，全球菜鸟产技人齐聚线上，欢度了一场精彩纷呈的新春全球云年会。会上我们回顾过去一年产技在数智化、全球化和产业化方面的卓越成绩，各个团队展示特色拜年SHO", "author": "菜鸟产品技术部", "time": "2025-01-22 17:31", "url": "", "platform": "jizha"}, {"title": "产技12月刊｜月度重点资讯，一手掌握！", "content": "▍一个好的AI助手，要有一颗成为「运营大脑」的心速递产技团队从站长移动化办公的局限性、咨询答疑成本高、数据分析时间长三大实际痛点出发，转化出相应所需的产品能力建设。通过 PC+移动双端支持、 搭建", "author": "菜鸟产品技术部", "time": "2025-01-22 17:16", "url": "", "platform": "jizha"}, {"title": "浙沪大区-【AE运营部-直营AE惠州仲恺优选B仓】-12月物流之星来啦", "content": "浙沪大区-【AE运营部-直营AE惠州仲恺优选B仓】12月物流之星来啦一分耕耘一分收获，恭喜以下同学被评选为12月份物流之星~物流之星：寇李强部门岗位：直营AE惠州仲恺优选B仓-库维-盘点  物流之星：", "author": "黄涛(普贤)", "time": "2025-01-06 13:42", "url": "", "platform": "jizha"}, {"title": "这群特别的人，来了一场特别的跨年 | 菜鸟2024年7-12月中国大区五年陈仪式【文末新年有奖互动】", "content": "12月30日下午，中国大区共230余名五年陈同学在杭州总部园区温暖相聚，共同迎接在菜鸟的五年时刻。 站在旧岁新年的交汇口，拾起往日的收获，与2025一起再度出发。 团圆在一起，我们有着不同的面孔，但", "author": "菜小鸟", "time": "2024-12-31 15:54", "url": "", "platform": "jizha"}, {"title": "Goodbye,2024! Come and Check Your Personal Jizha Annual Review", "content": "Standing at the crossroads of 2024 and 2025, we look back and reflect on our growth.  This year, we", "author": "菜小鸟", "time": "2024-12-31 15:38", "url": "", "platform": "jizha"}, {"title": "你的2024年终总结已生成，点击收获满满精彩！", "content": "站在2024和2025的交汇路口，回看过往，细数成长。 这一年，我们一起用脚步丈量过从出发到跨越的距离 新一岁，让勇气与陪伴成为我们行囊中的第一件礼物 来吧，一起重温，属于我们的2024记忆  叽喳", "author": "菜小鸟", "time": "2024-12-30 17:33", "url": "", "platform": "jizha"}, {"title": "", "content": "?【获奖名单公布】你身边的这些人竟是prompt大师！5 月 31 日，钉钉魔法棒斜杠“/”正式面向企业客户邀测 而内网同学们如火如荼参与  接招吧！办公达人  钉钉文档智能助手创作大赛 大赛连续两天冲上内网热帖榜 涌现了一大批prompt大师 有用钉钉文档智能助手 为同事写小说的?    产出优化客户体验的方案的?    制作outing攻略的? ? 可以说是群英荟萃 ? 本次大赛在阿里味儿和菜鸟叽喳同步举行 共收获 131 份有效参赛作品 详情见阿里味儿帖> 菜鸟叽喳帖> 经过大众投票以及结合大赛特邀评委 @叶军（不穷）@李强（在宽）@黄非  @高峰（髙峰） 评选与点评 最终有 8 部作品", "author": "", "time": "2023-6-6 10:00", "url": "https://www.aliway.com/read.php?tid=1513029", "platform": "alinei"}, {"title": "", "content": "行易毕业了，江湖再见今天是一个很普通的日子，是我在菜鸟的第2318天，即将离开阿里想说点啥，却又有点天凉好个秋的味道。听说花名不能保留，那么还是留个脚印吧，希望有人翻起的时候，也知道曾经有个叫行易的程序员来过。 放张老照片怀旧一下，程序员堆里找不出我吧？哈 首先还是要感谢让我来到阿里的@在宽(19177)，以及给我很多帮助的师兄@大通(15283)，感谢你们让我体验了不一样的阿里，让一个只会写代码的程序员开启了一扇新的人生大门，收获了丰富的个人成长。 感谢@不休(3788)@那澜(86695)@媤璐(26451)@老丘(106617)给我这样一个管理菜鸟�%...陈罡2022-2-10 11:", "author": "", "time": "2022-2-10 11:45", "url": "https://www.aliway.com/read.php?tid=611140", "platform": "alinei"}, {"title": "菜鸟产品技术全力以赴支持好大家", "content": "", "author": "李强(在宽)", "time": "2022-04-28 09:54", "url": "", "platform": "jizha"}, {"title": "", "content": "【凝心聚力 务实笃行】CTO党委召开党委扩大会议6月1日，CTO党委扩大会议在西溪园区党群服务中心召开。阿里巴巴集团党委书记邵晓锋，集团党办主任许艳出席会议；CTO党委书记程立，党委副书记李强、杨浩，党委组织委员吴勇慧，党委宣传委员陈盈，党委委员曲琳、崔婧，各党支部书记、委员等21人通过线上线下结合的方式参与本次会议。 大会开始，由主持人党委副书记李强分享了CTO党委基本情况及组织架构  ；分别从党员回归、党费缴纳、党员发展、活动组宣、技术公益和党建馆落地项目等方面介绍了CTO党委的党建工作现状 党委副书记杨浩，从基础四%...技术线党同学2021-6-7 11:35阿里味儿回复数: 0点击量", "author": "", "time": "2021-6-7 11:35", "url": "https://www.aliway.com/read.php?tid=561651", "platform": "alinei"}, {"title": "", "content": "鸟戈 毕业了比较不善言辞，就不多说了，真心感谢帮助过我的大家，是你们让我一路前进的时候少了许多的坎坷，也从你们身上学习到很多有用的知识。@不繁(9204)@悦麟(12930)@雷舍(31123)@验钞(15080)@广呆(143517)无相 @宸兮(105855)@在宽(19177) 也非常感谢曾经一起相处过的ICBU和AE的小伙伴~一起战斗过的业务方和产品同学~王畅 @一冷(7511)@永阳(124787)@臻美(26346)@马特(74082)@天敖(15013)@三慧(44950)@华生(16378)@威硕(58278)，在一路的争吵过程中让我对业务的理解越来越深。 也十分感谢与我并肩作", "author": "", "time": "2021-4-9 14:22", "url": "https://www.aliway.com/read.php?tid=551332", "platform": "alinei"}, {"title": "", "content": "菜鸟CTO在宽：最好的物流科技就是能扎实服务好实体经济【雷锋网】在宽）认为，核心的因素是：快递行业数字化。 如今每个分拨中心都是高度自动化，都与电子面单息息相关。而菜鸟的初心，是希望做物流产业互联网，一方面要投入到国际、末端和供应链等物流运营当中，解决别人解决不了的问题，让商业运行更高效。另一方面也要通过技术服务，实实在在做一些能引领整个行业数字化发展的事情，“如果站在互联网的技术视角看物流行业，其实我们一直在扎根做实实在在的事情。” 好的技术要能解决实际问题在宽向雷锋网表示，一直以来，菜鸟内部的技术文化�%...张桥刚(小桥)2021-11-4 20:59阿里味儿回复数: 5点击量: 470", "author": "", "time": "2021-11-4 20:59", "url": "https://www.aliway.com/read.php?tid=592951", "platform": "alinei"}, {"title": "", "content": "全球化，Fighting All in One——新零售技术 AE升级中台融合SIRIUS战役誓师大会(点击下图回顾现场)              2019年3月7日上午，承载着AE技术升级并与集团国际化中台融合重要使命的战役—SIRIUS战役誓师大会在圆月山庄举行。同时，SIRIUS的启动也打响了新零售技术国际化战略新财年的第一枪！       范禹、MM、思函、鲁肃、玄难、大少、四虎、在宽、等业务方和兄弟团队负责人来到KO现场。       新零售技术国际化战略负责人在宽 现场介绍了SIRIUS战役的目标和意义。在宽表示，这次战役不仅是国际化团队的战役，也是阿里经济体多个业务团队的联合战", "author": "", "time": "2019-3-8 10:39", "url": "https://www.aliway.com/read.php?tid=448713", "platform": "alinei"}, {"title": "", "content": "天水离职帖2011年7月18日入职报道的场景恍如昨日。 今天是我在阿里工作的最后一天，2538天，7年工作在阿里、生活在阿里、收获在阿里。 马老师说过要在自我感觉最好的时候离开阿里，去追寻自己小小的梦想。 此时内心最想说的就是感谢与祝福，需要感谢的人太多太多。 首先感谢曾经带过我的主管们，重楼、长恭、怀素、允礼、额图、玉坤，感谢你们帮助我一步步成长。还要感谢人生导师玄难和在宽，在迷茫的时候引导我寻找新的目标、提升自我认知。 同时感谢曾经一起合作过的伙伴们，宝驹、正轩、婧雅等天猫%...马金金(天水)2018-6-28 09:04阿里味儿回复数: 150点击量: 12468", "author": "", "time": "2018-6-28 09:04", "url": "https://www.aliway.com/read.php?tid=413929", "platform": "alinei"}, {"title": "", "content": "百阿曰百阿曰 十月八 别国庆 迎百阿 九九四 掺合心 聚凤栖思懿班 老中医 码克四 不二团 幺零幺 葫芦娃追梦者 第一课 忆过去 惜如今 十八人 甘苦共户外行 安全墙 双脚离 达芬奇 龙取水 罗汉塔寻文化 阿里日 人三时 一三五 哪十派 讲土话在宽兄 接地气 释阿里 雪飞兄 严辞令 数据图零距离 找妈妈 大文娱 达摩院 阿里云 吃盒马逍遥子 必修课 小客栈 烛夜谈 育儿经 感情史玄玥到 讲绩效 三七五 A B C  三二五 最热门小剧场 乐开花 容嬷嬷 又扎针 怜金锁 竟躺枪周小结 公益行 老套路 捡垃圾 收能量 教种树价值观 �%...何涌(犹飞)2018-10-25 09:40阿里味儿回复", "author": "", "time": "2018-10-25 09:40", "url": "https://www.aliway.com/read.php?tid=431316", "platform": "alinei"}, {"title": "", "content": "《投票》菜鸟哪个部门的男人认真起来最帅（有视频有相片）盖楼有奖 盖楼有奖 盖楼有奖 逢7、17、27、37。。。就有奖品 该活动9月12号上午10点结束 七嘴八舌： 有没有这种体验，走进一个菜鸟会议室，要么男士全屏，要么就点缀着那么几个女孩。 这么多良将的园子里，总有一个园草重生的地方，你认为是哪个部门？ （看视频、看相片，实力评选） A: 产品与技术（在宽说：颜值担当在这） B: 仓配&供应链（磁针说：够爷们才有味道） C: 供应链运营（王政说：需要选吗，随便甩大家几个街区） D: 客户运营中心(赛蒙说：我看你们有没有眼光) E: 法务（啸川：选我，家里有啥�%...李丽娟2017-9-11", "author": "", "time": "2017-9-11 14:27", "url": "https://www.aliway.com/read.php?tid=375379", "platform": "alinei"}, {"title": "", "content": "他们今年的KPI只有一条：去实现！2017，菜鸟技术人、数据人 携手业务伙伴，去实现 携手专业伙伴，去实现 携手CP伙伴，去实现 2017，我们坚定理想，突破自己，去实现！ 直入主题（点击直通）： 技术主题成果体验展 年度优秀技术奖项评选及结果 HACKATHON黑客马拉松大赛 万霖致辞 菲青、在宽讲话 菜鸟技术Kick off精彩回顾张筠(莫契)2017-4-7 16:30阿里味儿回复数: 31点击量: 1276", "author": "", "time": "2017-4-7 16:30", "url": "https://www.aliway.com/read.php?tid=358846", "platform": "alinei"}, {"title": "", "content": "权限管理平台及规范、信息安全培训（天猫开发专场）权限管理平台及规范、信息安全培训（天猫开发专场） 温馨提醒：内部交流，内部分享。请遵循《集团商业行为准则》，勿在任何对外渠道中转载       1月13日下午在西溪园区举办了权限管理规范及信息安全的交流会——天猫核心开发专场，作为整个集团的第一站，拉开了各BU权限安全宣导的序幕！        感谢大家在忙碌的周一，利用宝贵的时间和我们一起交流关于权限安全的这些事， 也非常感谢各位优秀的技术大拿们在现场提供的宝贵建议！同时，也感谢在宽全程的协助、以及技术部管理层对权限安全...集团账号权限安全22014-1-14 20:04阿里味儿回复数: 0点", "author": "", "time": "2014-1-14 20:04", "url": "https://www.aliway.com/read.php?tid=228362", "platform": "alinei"}, {"title": "", "content": "2012年集团M4P9晋升公告各位亲， 经过各 BU 提名， 360 度评估，集团 M4P9 晋升委员会面试，以下同事自 2013 年 4 月 1 日获得晋升。祝贺他们！并期待他们更精彩的表现 ~ ！   序号  姓名 公司 - 部门  晋升前层级  晋升后层级  1 齐俊生 国际事业部 -B2B 国际 - 采购直达市场 M3 M4 2 不穷(叶军)  国际事业部 - 国际技术部 -B2C 国际技术部 - 网站架构 P8 P9 3 南天（庄卓然)  天猫事业部 - 产品技术部 - 导购 & 垂直线 M3 M4 4 在宽(李强)  天猫事业部 - 产品技术部 - 商家平台 & 服务 M3 M4 ", "author": "", "time": "2013-6-18 15:05", "url": "https://www.aliway.com/read.php?tid=202759", "platform": "alinei"}, {"title": "", "content": "春联也有打油的！前两天夜里半睡半醒之时，突然回想起年初天猫产品技术年会上，作的一副乱七八糟的春联，觉得还蛮有才的，依稀还记得，记下来，备忘。（大家可以看懂的！）   上联上：冰罗松，雪根仙，冬逝春来吟猫儿； 上联下：心在宽，人自在，情怡梦远溢孤城。 下联上：迈玉关，跃南天，锦绣江南绫罗成； 下联下：闻香宝，艳万里，春到百花输优昙。 横批：人尽逍遥！陆旻2012-9-28 13:36阿里味儿回复数: 0点击量: 0", "author": "", "time": "2012-9-28 13:36", "url": "https://www.aliway.com/read.php?tid=176549", "platform": "alinei"}, {"title": "", "content": "给我们的内部猎头们鼓掌! 哗啦啦~在宽、云碧 在18（要发）这样一个日子，我们的颁奖嘉宾MM和享受内推之惠的大户菲青、行癫、优昙扛着礼品、奖状和一盆充满爱意的仙人掌走进了内部猎头的身边，进行走动式颁奖！ 当奖品呈现，当拥抱来袭，当感谢道来，我们的获奖小二们绽开了“如花”的笑脸 南天.jpg 南天 代五竹.jpg 图片中人物为若虚（属于替五竹待领人物，大家关注奖品即可！哈哈） 代华黎.jpg 图片人物为另一推荐达人-毕玄（华黎幸福婚嫁中~） 在宽.jpg 在宽 云碧.jpg 云碧 代根仙.jpg此人属于2010年内推大奖有力竞争人物（根仙正在埋头开会中%...董毅2010-3-19 13:27阿", "author": "", "time": "2010-3-19 13:27", "url": "https://www.aliway.com/read.php?tid=18058", "platform": "alinei"}, {"title": "", "content": "钢铁是怎样炼成的？CTU4.0背后的故事0的第一个实时BI模型成功上线，效果完美，所有参与者都激动万分。在这个结果背后的过程中，又隐藏了多少人的心血和智慧？           拉开序幕            2月1日，在宽提出了业务安全产品2011年的总体方向，“继续改进CTU3.0的指标模型，规则引擎与BI模型整合，从数据过滤向行为分析转变”。CTU4.0就是从这里拉开序幕，在宽提出了模型、指标等的一些新思路，那时候在宽说的目标大家心里都还没底，特别是模型这块，虽然我们很早就提出了CTU要整合模型，但没人知道模型究竟是什么样子的，又是怎么样和CTU结合的，在宽...叶长程(卢云)2010-", "author": "", "time": "2010-12-2 09:33", "url": "https://www.aliway.com/read.php?tid=65699", "platform": "alinei"}, {"title": "", "content": "技术大学讲师饕餮盛宴！技术大学讲师饕餮盛宴，在柳浪闻莺非常文艺的拉丁娜自助餐厅举行。2.jpg技术大学讲师发展路径如下：优秀讲师--导师--大师--宗师--太师 盘点2011年，共有以下33位优秀讲师晋升为导师，他们是：青灵 、绣云、干仙、伏威、蓝大、飞花、玉帆、渡虚、丘虚、曲山、曲琳、 碧瑶、郭芙、在宽、楚材、叔度小凡、胜通、天狐、天彤、霜波、张巡、少杰、风八、成泰、不愁、锋寒、沈询、辰战、博一、撒迦、倩薇、玄惭 共有8位导师晋升为大师，他们是：若海、曲山、放翁、雷卷、 黄裳、桂南、孤城、毕玄 共有2位�%...宗伟2010-11-15 11:13阿里味儿回复数: 13点击量: 403", "author": "", "time": "2010-11-15 11:13", "url": "https://www.aliway.com/read.php?tid=62859", "platform": "alinei"}, {"title": "", "content": "菜鸟CTO在宽：最好的物流科技就是能扎实服务好实体经济【雷锋网】", "author": "", "time": "", "url": "https://www.aliway.com/read.php?tid=592951", "platform": "alinei"}];
-
-        let currentFilter = 'all';
-        let currentSearch = '';
-        let displayCount = 15;
-
-        function getYear(timeStr) {
-            if (!timeStr) return '未知';
-            const m4 = timeStr.match(/^(\d{4})/);
-            if (m4) return m4[1];
-            const m2 = timeStr.match(/^(\d{2})-(\d{2})/);
-            if (m2) return '2026';
-            return '未知';
         }
+        return positions;
+    }
 
-        function getFilteredPosts() {
-            return FORUM_POSTS.filter(p => {
-                if (currentFilter !== 'all' && p.platform !== currentFilter) return false;
-                if (currentSearch) {
-                    const q = currentSearch.toLowerCase();
-                    const text = ((p.title || '') + ' ' + (p.content || '') + ' ' + (p.author || '')).toLowerCase();
-                    if (!text.includes(q)) return false;
-                }
-                return true;
+    // Create particles
+    function init() {
+        const fontSize = Math.min(W * 0.09, 80);
+        const titlePositions = getTextPositions("Hello ZK's World", fontSize, -20);
+
+        const totalParticles = Math.min(titlePositions.length, 2000);
+        const step = Math.max(1, Math.floor(titlePositions.length / totalParticles));
+
+        for (let i = 0; i < titlePositions.length; i += step) {
+            const tp = titlePositions[i];
+            particles.push({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                tx: tp.x,
+                ty: tp.y,
+                char: chars[Math.floor(Math.random() * chars.length)],
+                color: colors[Math.floor(Math.random() * colors.length)],
+                size: Math.random() * 10 + 6,
+                targetSize: Math.random() * 3 + 2,
+                speed: Math.random() * 0.02 + 0.015,
+                alpha: Math.random() * 0.5 + 0.2,
+                targetAlpha: 0.9,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                progress: 0
             });
         }
 
-        function highlightText(text, query) {
-            if (!query || !text) return text;
-            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp('(' + escaped + ')', 'gi');
-            return text.replace(regex, '<span class="forum-highlight">$1</span>');
+        // Add extra floating sparkles
+        for (let i = 0; i < 50; i++) {
+            particles.push({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                tx: Math.random() * W,
+                ty: Math.random() * H,
+                char: '',
+                isSparkle: true,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                size: Math.random() * 3 + 1,
+                alpha: Math.random() * 0.6,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2
+            });
         }
+    }
 
-        function renderPosts() {
-            const container = document.getElementById('forum-posts');
-            const loadMoreBtn = document.getElementById('forum-load-more');
-            const emptyState = document.getElementById('forum-empty');
+    let startTime = Date.now();
+    const CONVERGE_DURATION = 2500;
 
-            const filtered = getFilteredPosts();
-            const toShow = filtered.slice(0, displayCount);
+    function animate() {
+        ctx.clearRect(0, 0, W, H);
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / CONVERGE_DURATION, 1);
+        const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
 
-            if (filtered.length === 0) {
-                container.innerHTML = '';
-                loadMoreBtn.style.display = 'none';
-                emptyState.style.display = 'block';
+        particles.forEach(p => {
+            if (p.isSparkle) {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+                p.alpha = 0.3 + Math.sin(elapsed * 0.003 + p.x) * 0.3;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = p.color + Math.floor(p.alpha * 255).toString(16).padStart(2,'0');
+                ctx.fill();
                 return;
             }
 
-            emptyState.style.display = 'none';
-            loadMoreBtn.style.display = displayCount < filtered.length ? 'block' : 'none';
+            p.x = p.x + (p.tx - p.x) * eased * 0.08 + p.vx * (1 - eased);
+            p.y = p.y + (p.ty - p.y) * eased * 0.08 + p.vy * (1 - eased);
+            p.vx *= 0.99;
+            p.vy *= 0.99;
 
-            let html = '';
-            let lastYear = '';
+            const currentAlpha = p.alpha + (p.targetAlpha - p.alpha) * eased;
+            const currentSize = p.size + (p.targetSize - p.size) * eased;
 
-            toShow.forEach((p, idx) => {
-                const year = getYear(p.time);
-                if (year !== lastYear) {
-                    html += '<div class="forum-year-header">' + year + (year !== '未知' ? ' 年' : '') + '</div>';
-                    lastYear = year;
-                }
-
-                const platformLabel = p.platform === 'jizha' ? '菜鸟叽喳' : '阿里味儿';
-                const platformClass = p.platform === 'jizha' ? 'jizha' : 'alinei';
-                const title = p.title ? highlightText(p.title, currentSearch) : '';
-                const content = p.content ? highlightText(p.content, currentSearch) : '';
-                const timeStr = p.time || '';
-                const author = p.author ? highlightText(p.author, currentSearch) : '';
-
-                html += '<div class="forum-post">';
-                if (title) {
-                    html += '<div class="post-title">' + title + '</div>';
-                }
-                if (content) {
-                    html += '<div class="post-content">' + content + '</div>';
-                }
-                html += '<div class="post-meta">';
-                html += '<span class="platform-badge ' + platformClass + '">' + platformLabel + '</span>';
-                if (timeStr) html += '<span class="post-time">' + timeStr + '</span>';
-                if (author) html += '<span class="post-author">' + author + '</span>';
-                if (p.url) html += '<a class="post-link" href="' + p.url + '" target="_blank" rel="noopener">查看原帖 &rarr;</a>';
-                html += '</div></div>';
-            });
-
-            container.innerHTML = html;
-        }
-
-        function filterForum(type) {
-            currentFilter = type;
-            displayCount = 15;
-            document.querySelectorAll('.forum-filter-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('filter-' + type).classList.add('active');
-            renderPosts();
-        }
-
-        function searchForum(query) {
-            currentSearch = query.trim();
-            displayCount = 15;
-            renderPosts();
-        }
-
-        function loadMorePosts() {
-            displayCount += 15;
-            renderPosts();
-        }
-
-        // Initial render
-        document.addEventListener('DOMContentLoaded', function() {
-            renderPosts();
+            ctx.save();
+            ctx.globalAlpha = currentAlpha;
+            ctx.fillStyle = p.color;
+            ctx.font = `bold ${currentSize}px monospace`;
+            ctx.fillText(p.char, p.x, p.y);
+            ctx.restore();
         });
-    </script>
+
+        // Show title and button after convergence
+        if (progress > 0.6) {
+            document.getElementById('splash-text').classList.add('show');
+        }
+        if (progress >= 1) {
+            document.getElementById('splash-btn').classList.add('show');
+            // Keep subtle animation going
+            particles.forEach(p => {
+                if (!p.isSparkle) {
+                    p.x += Math.sin(Date.now() * 0.001 + p.tx) * 0.3;
+                    p.y += Math.cos(Date.now() * 0.001 + p.ty) * 0.3;
+                }
+            });
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    init();
+    animate();
+})();
+
+function enterApp() {
+    const splash = document.getElementById('splash');
+    splash.classList.add('fade-out');
+    setTimeout(() => {
+        splash.style.display = 'none';
+        const app = document.getElementById('app');
+        app.style.display = 'block';
+        requestAnimationFrame(() => { app.classList.add('visible'); });
+        initRevealObserver();
+        renderMessages();
+    }, 800);
+}
+
+// ============ TAB SWITCHING ============
+let currentTab = 'guestbook';
+function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-guestbook').classList.toggle('active', tab === 'guestbook');
+    document.getElementById('tab-journey').classList.toggle('active', tab === 'journey');
+    document.getElementById('panel-guestbook').style.display = tab === 'guestbook' ? 'block' : 'none';
+    document.getElementById('panel-journey').style.display = tab === 'journey' ? 'block' : 'none';
+    if (tab === 'journey') {
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============ SCROLL REVEAL ============
+let observer;
+function initRevealObserver() {
+    observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) entry.target.classList.add('visible');
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+}
+
+// ============ GUESTBOOK ============
+let messages = [];
+let uploadedFiles = [];
+let editingId = null;
+let db = null;
+let firebaseReady = false;
+const LS_KEY = 'zk_guestbook_messages';
+
+// Firebase config - replace with real values to enable cloud sync
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDummyKeyForNow",
+    authDomain: "zk-guestbook.firebaseapp.com",
+    projectId: "zk-guestbook",
+    storageBucket: "zk-guestbook.appspot.com",
+    messagingSenderId: "000000000",
+    appId: "1:000000000:web:000000000"
+};
+
+// Try to init Firebase
+try {
+    if (typeof firebase !== 'undefined' && FIREBASE_CONFIG.apiKey !== "AIzaSyDummyKeyForNow") {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.firestore();
+        firebaseReady = true;
+        loadMessagesFromFirebase();
+    }
+} catch(e) {
+    console.log('Firebase not configured yet, using local mode');
+}
+
+// ---- localStorage helpers ----
+function saveToLocal() {
+    try {
+        // Save messages without large media data URIs to keep localStorage lean
+        const lite = messages.map(m => ({
+            ...m,
+            media: (m.media || []).map(f => f.data && f.data.length > 500000 ? { type: f.type, data: '[too_large]' } : f)
+        }));
+        localStorage.setItem(LS_KEY, JSON.stringify(lite));
+    } catch(e) { console.warn('localStorage save failed', e); }
+}
+
+function loadFromLocal() {
+    try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                // Filter out media placeholders
+                return parsed.map(m => ({
+                    ...m,
+                    media: (m.media || []).filter(f => f.data !== '[too_large]')
+                }));
+            }
+        }
+    } catch(e) { console.warn('localStorage load failed', e); }
+    return null;
+}
+
+// Fallback: load from localStorage or use sample data
+if (!firebaseReady) {
+    const saved = loadFromLocal();
+    if (saved) {
+        messages = saved;
+    } else {
+        messages = [
+            {
+                id: 'sample1',
+                name: '菜鸟产品技术部',
+                dept: '集体留言',
+                content: '在宽，感谢你18年来的坚守与付出！从全球化CTO到菜鸟CTO，你用"组合技术的复利"推动了物流科技的边界。简单、极致、贴地、疾飞——这不仅是菜鸟的价值观，更是你的真实写照。祝前程似锦，新的旅途一路坦荡！',
+                media: [],
+                time: Date.now() - 86400000 * 2,
+                color: '#4facfe'
+            },
+            {
+                id: 'sample2',
+                name: '一位菜鸟技术同学',
+                dept: '',
+                content: '宽哥，在你面对面的13期里，你说的那句"敢想敢试，别怕错"一直激励着我。谢谢你为我们创造了这么好的技术氛围。江湖再见！',
+                media: [],
+                time: Date.now() - 86400000,
+                color: '#43e97b'
+            }
+        ];
+        saveToLocal();
+    }
+}
+
+const AVATAR_COLORS = ['#4facfe','#43e97b','#f6d365','#ff7e5f','#a18cd1','#fbc2eb','#00b894','#e17055','#6c5ce7','#fdcb6e'];
+
+function getAvatarColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function formatTime(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return '刚刚';
+    if (diff < 3600000) return Math.floor(diff/60000) + '分钟前';
+    if (diff < 86400000) return Math.floor(diff/3600000) + '小时前';
+    if (diff < 86400000 * 7) return Math.floor(diff/86400000) + '天前';
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function handleFileUpload(event, type) {
+    const files = Array.from(event.target.files);
+    files.forEach(file => {
+        if (uploadedFiles.length >= 6) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            uploadedFiles.push({ type, data: e.target.result, name: file.name });
+            renderPreviews();
+        };
+        reader.readAsDataURL(file);
+    });
+    event.target.value = '';
+}
+
+function renderPreviews() {
+    const container = document.getElementById('msg-preview');
+    container.innerHTML = uploadedFiles.map((f, i) => {
+        const el = f.type === 'image'
+            ? `<img src="${f.data}" alt="${f.name}">`
+            : `<video src="${f.data}" muted></video>`;
+        return `<div class="msg-preview-item">${el}<button class="remove-btn" onclick="removeFile(${i})">×</button></div>`;
+    }).join('');
+}
+
+function removeFile(idx) {
+    uploadedFiles.splice(idx, 1);
+    renderPreviews();
+}
+
+function submitMessage() {
+    const nameEl = document.getElementById('msg-name');
+    const deptEl = document.getElementById('msg-dept');
+    const contentEl = document.getElementById('msg-content');
+    const name = nameEl.value.trim();
+    const content = contentEl.value.trim();
+
+    if (!name) {
+        nameEl.style.borderColor = '#ff6b6b';
+        nameEl.focus();
+        setTimeout(() => nameEl.style.borderColor = '#eee', 2000);
+        return;
+    }
+    if (!content && uploadedFiles.length === 0) {
+        contentEl.style.borderColor = '#ff6b6b';
+        contentEl.focus();
+        setTimeout(() => contentEl.style.borderColor = '#eee', 2000);
+        return;
+    }
+
+    const msg = {
+        id: editingId || ('msg_' + Date.now() + '_' + Math.random().toString(36).substr(2,6)),
+        name: name,
+        dept: deptEl.value.trim(),
+        content: content,
+        media: uploadedFiles.map(f => ({ type: f.type, data: f.data })),
+        time: editingId ? messages.find(m=>m.id===editingId)?.time || Date.now() : Date.now(),
+        color: getAvatarColor(name),
+        editedAt: editingId ? Date.now() : null
+    };
+
+    if (editingId) {
+        const idx = messages.findIndex(m => m.id === editingId);
+        if (idx >= 0) messages[idx] = msg;
+        editingId = null;
+    } else {
+        messages.unshift(msg);
+    }
+
+    // Save to Firebase if available
+    if (firebaseReady && db) {
+        db.collection('messages').doc(msg.id).set(msg).catch(e => console.error(e));
+    }
+    // Always persist to localStorage as fallback
+    saveToLocal();
+
+    nameEl.value = '';
+    deptEl.value = '';
+    contentEl.value = '';
+    uploadedFiles = [];
+    renderPreviews();
+    renderMessages();
+    document.getElementById('msg-submit').textContent = '发送留言';
+}
+
+function editMessage(id) {
+    const msg = messages.find(m => m.id === id);
+    if (!msg) return;
+    editingId = id;
+    document.getElementById('msg-name').value = msg.name;
+    document.getElementById('msg-dept').value = msg.dept || '';
+    document.getElementById('msg-content').value = msg.content;
+    uploadedFiles = (msg.media || []).map(m => ({ type: m.type, data: m.data, name: '' }));
+    renderPreviews();
+    document.getElementById('msg-form').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('msg-submit').textContent = '更新留言';
+}
+
+function deleteMessage(id) {
+    if (!confirm('确定要删除这条留言吗？')) return;
+    messages = messages.filter(m => m.id !== id);
+    if (firebaseReady && db) {
+        db.collection('messages').doc(id).delete().catch(e => console.error(e));
+    }
+    saveToLocal();
+    renderMessages();
+}
+
+// ---- Export / Import ----
+function exportMessages() {
+    const data = JSON.stringify(messages, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'zk_guestbook_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importMessages() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const imported = JSON.parse(ev.target.result);
+                if (!Array.isArray(imported)) { alert('格式无效'); return; }
+                const existIds = new Set(messages.map(m => m.id));
+                let added = 0;
+                imported.forEach(m => {
+                    if (!existIds.has(m.id)) {
+                        messages.push(m);
+                        added++;
+                    }
+                });
+                messages.sort((a, b) => (b.time || 0) - (a.time || 0));
+                saveToLocal();
+                renderMessages();
+                alert('成功导入 ' + added + ' 条新留言！');
+            } catch(err) {
+                alert('导入失败: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function renderMessages() {
+    const container = document.getElementById('msg-list');
+    const countEl = document.getElementById('msg-count');
+    countEl.textContent = messages.length > 0 ? `共 ${messages.length} 条留言` : '';
+
+    if (messages.length === 0) {
+        container.innerHTML = `
+            <div class="msg-empty">
+                <div class="msg-empty-icon">✨</div>
+                <p style="font-size:15px;margin-bottom:8px;">还没有留言</p>
+                <p style="font-size:13px;">成为第一个留言的人吧！</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = messages.map(msg => {
+        const initial = msg.name.charAt(0);
+        const color = msg.color || getAvatarColor(msg.name);
+        const mediaHtml = (msg.media || []).map(m => {
+            if (m.type === 'image') return `<img src="${m.data}" onclick="openLightbox('${m.data.replace(/'/g, "\\'")}')" alt="">`;
+            return `<video src="${m.data}" controls></video>`;
+        }).join('');
+
+        return `
+        <div class="msg-card">
+            <div class="msg-card-header">
+                <div class="msg-avatar" style="background:${color};">${initial}</div>
+                <div>
+                    <div class="msg-name">${escapeHtml(msg.name)}${msg.dept ? ` <span style="font-weight:400;color:var(--text-light);font-size:12px;">· ${escapeHtml(msg.dept)}</span>` : ''}</div>
+                </div>
+                <div class="msg-time">${formatTime(msg.time)}${msg.editedAt ? ' (已编辑)' : ''}</div>
+                <div class="msg-actions">
+                    <button class="msg-action-btn" onclick="editMessage('${msg.id}')">编辑</button>
+                    <button class="msg-action-btn delete" onclick="deleteMessage('${msg.id}')">删除</button>
+                </div>
+            </div>
+            <div class="msg-text">${escapeHtml(msg.content)}</div>
+            ${mediaHtml ? `<div class="msg-media">${mediaHtml}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+}
+
+// Load from Firebase
+function loadMessagesFromFirebase() {
+    if (!db) return;
+    db.collection('messages').orderBy('time', 'desc').onSnapshot(snapshot => {
+        messages = snapshot.docs.map(doc => doc.data());
+        renderMessages();
+    });
+}
+
+// ============ FORUM DATA & LOGIC ============
+const FORUM_POSTS = [{"title": "是时候让你的价值被看见、被使用、被传承了【含万霖视频】", "content": "嘿，亲爱的菜鸟小伙伴们～ 你们可能没注意到，但在大家一点一滴的努力下，我们的知识库已经悄悄完成了一次“华丽转身”——从“有文档就行”，升级到了“好文档才够”！👏 来看看万霖和在宽怎么说（记得看视频哦", "author": "菜鸟产品技术部", "time": "03-02 16:33", "url": "", "platform": "jizha"}, {"title": "🎉 产技新春团圆｜云端联欢、文化发布、惊喜不断！", "content": "🎁评论有礼，快来参与～ 评论区留下你的新年祝福语 截至2月23日，点赞前5名可以获得新年快乐桶一个噢～新年我们一起喜气洋洋呀😄 🐎 一马当先｜云端团圆，年味启程一条AI制作的、充满全球化风格的、", "author": "菜鸟产品技术部", "time": "02-11 09:47", "url": "", "platform": "jizha"}, {"title": "“我是真的相信。”——「在宽面对面」第15期 双旦特别实录", "content": "🎁有奖评论🎁 评论点赞数只需大于5，前20位同学 即可收获“你说得太6了”奖励1份哦（66菜籽） （时间截至1月16日12:00） 最近一段时间，在宽几乎成了会说话的人型AI广告牌，任何场景里，三", "author": "菜鸟产品技术部", "time": "01-06 12:00", "url": "", "platform": "jizha"}, {"title": "史上第一次！想说说天地会同学变成圣诞老人，给我过三年醇这件事", "content": "饱含惊喜的我，略带害羞的他 产技三年醇的现场，在宽就这么戴上胡子，背上礼物袋，揣着心意 红红火火地来了！！！ 这么多年过去了，我终于知道  “妈妈，圣诞老人是真的”！  ✨ 快问快答：一句话，三年", "author": "菜鸟产品技术部", "time": "2025-12-29 10:26", "url": "", "platform": "jizha"}, {"title": "回头看，轻舟已过万重山丨🎆菜鸟2025年7-12月中国大区五年陈仪式顺利举办", "content": "五年，是我们走过的日常 2025年12月31日，正值岁末，约200位菜鸟五年陈同学在总部园区报告厅温暖相聚，共同度过了自己的五年陈仪式，也一齐庆祝新年。  五年，是三百多次日升月落，是通勤路上熟悉的", "author": "菜小鸟", "time": "2025-12-26 13:40", "url": "", "platform": "jizha"}, {"title": "致敬每一位并肩作战的你｜菜鸟产品技术部双11复盘会", "content": "12月19日，菜鸟产品技术部召开2025双11及黑五复盘会 聚焦大促保障季的关键战役，系统回顾双11全周期技术护航历程，通过“小胜即庆”仪式 向所有默默奋战在产品与技术一线的同学致以诚挚感谢！ 在宽", "author": "菜鸟产品技术部", "time": "2025-12-22 12:19", "url": "", "platform": "jizha"}, {"title": "（已开奖）万霖：业务增长显著，提升体验会让员工感受到公司的增长 丨万霖下午茶Vol.42", "content": "本期参与同学：@世石@淼秒@梓山@说客@卡奇@立白@弟安@瓦龙@居蓝@佬饕  12月4日下午，万霖与10位菜鸟同学在菜鸟总部园区展开深度对话，围绕组织与激励、战略方向、执行与运营、AI技术与创新、管", "author": "菜小鸟", "time": "2025-12-12 09:58", "url": "", "platform": "jizha"}, {"title": "0 day不是梦！做AI时代的快企业！快个人！ ——AI ToolKits 正式发布！", "content": "0 day不是梦！做AI时代的快企业！快个人！ AI ToolKits 正式发布！ 12月4日，历经两个月集中攻坚，菜鸟AI平台战略级项目——AI ToolKits 正式发布！发布会全面展示平台能力，", "author": "菜鸟产品技术部", "time": "2025-12-05 10:04", "url": "", "platform": "jizha"}, {"title": "☕️「在宽面对面」第14期：“核心的目标是把AI用到最好，敢想敢试，别怕错！”", "content": "11月，在宽和10位产技同学围绕AI专题，展开了一场畅所欲言的线下对谈，以下为完整实录。 参与人 | 书娴、佬方、子钦、笑鲲、灵六、岱夫、修熠、光眀、渡幻、四季    第一节 关于AI，菜鸟、阿里、外", "author": "菜鸟产品技术部", "time": "2025-11-19 15:48", "url": "", "platform": "jizha"}, {"title": "原来是他们！AI Coding首轮四位先锋出炉～", "content": "原来是他们！AI Coding首轮四位先锋出炉～▍在宽：勇敢探索，不要有对过去的包袱，多提需求和建议 11月12日，菜鸟产技第一期『AI Coding品码会』热烈开启！来自西安开发中心的辛宗、康佳星、", "author": "菜鸟产品技术部", "time": "2025-11-17 19:34", "url": "", "platform": "jizha"}, {"title": "产技10月刊｜月度重点资讯，一手掌握！", "content": "简单极致、贴地疾飞！本期共有43位同学成为“产技四侠”，快来一睹四侠们的风采吧！  👉点击此处查看全部内容  AI好服务，全球稳定赢！菜鸟产技军团以“稳”制胜，护航大促每一秒！双11大促期间系统", "author": "菜鸟产品技术部", "time": "2025-11-17 19:28", "url": "", "platform": "jizha"}, {"title": "【一峰，稳！】FY26双11大促一峰，产技军团“稳稳”通过首轮大战！", "content": "【一峰，稳！】FY26双11大促一峰，产技军团“稳稳”通过首轮大战！ 「AI好服务 全球稳定赢」10月20日20:00，FY26双11大促一峰正式打响！近百人产技军团早已整装集结，红色战袍整齐列阵，士", "author": "菜鸟产品技术部", "time": "2025-11-04 10:54", "url": "", "platform": "jizha"}, {"title": "Q2外单增长亮眼，大促正是丰收的季节！丨第25届管理者大会召开", "content": "Q2外单增长亮眼，多个关键战役取得突破 10月28日，“飞越山海”菜鸟第二十五届管理者大会在杭州总部园区开启。在过去的Q2，尽管我们遭遇了内外部的诸多挑战，菜鸟仍然取得了许多不错的进展：外单增长亮眼，", "author": "菜小鸟", "time": "2025-10-28 19:02", "url": "", "platform": "jizha"}, {"title": "", "content": "【菜鸟1024产技节】菜包AI创新大赛 获奖团队揭晓「菜包 AI」创新大赛由全民 AI 项目组主办，旨在以 AI 驱动创新，提升业务效率并挖掘可落地的 AI 应用场景。大赛提供了一个展示创意、分享 AI 应用实践与 AI Agent 解决方案的阵地。 本次大赛共吸引参赛总人数 455 人。共提交了 153 个作品，在 1024 技术节决赛当天，有幸邀请到 战略与商分部负责人 世誉、全球供应链事业部负责人 寒帅、菜鸟CTO 在宽、产技HR负责人&中后台HR负责人 东芜、跨境物流&平台产品技术负责人 毕啸 作为决赛评委。 「菜包AI」创新大赛·获奖团队揭晓人气爆棚奖 作品 成员 部门 不动产综管催", "author": "", "time": "2025-10-27 09:43", "url": "https://www.aliway.com/read.php?tid=3350208", "platform": "alinei"}, {"title": "🔥燃到骨子里！1024产技节竞技运动会：趣味拉满、拔河狂飙，冠亚季军亮身份！", "content": "10月23日晚的东庭院，彻底被产技人的热血与笑声“点燃”啦！1024产技节竞技运动会落下帷幕，趣味赛场拼默契、拔河赛场拼韧劲，惊喜明星赛都藏满名场面，现在就解锁所有高光时刻！ 第一弹：趣味赛场，积分", "author": "菜鸟产品技术部", "time": "2025-10-24 18:59", "url": "", "platform": "jizha"}, {"title": "「当燃·热AI」FY26 菜鸟1024产技节@AI Anywhere启动会全景回顾来袭！", "content": "前一晚东庭院运动会的热血余韵仍在，10月24日的中庭已被“热AI”点燃——从上午AI大赛八强的脑力碰撞，到中午启动会的重磅发布，再到荣誉颁奖与暖心彩蛋，全天亮点密集，让我们一起跟随镜头回顾这精彩的一", "author": "菜鸟产品技术部", "time": "2025-10-24 18:50", "url": "", "platform": "jizha"}, {"title": "「菜包AI」创新大赛决赛&颁奖回顾", "content": "「菜包AI」创新大赛·决赛评委本次大赛共吸引参赛总人数 455 人。共提交了 153 个作品，业务创意赛道提交 44 个，AI 实践案例赛道提交 64 个，AI Agent赛道提交 45 个。 在", "author": "菜鸟产品技术部", "time": "2025-10-24 14:53", "url": "", "platform": "jizha"}, {"title": "FY26 双11大促产技军团KO&第一次全链路压测通过！", "content": "“AI好服务，全球稳定赢！”9月25日， FY26菜鸟产品技术部双11战役正式启幕，产技军团全员集结、严阵以待，以攻坚姿态开启新征程的挑战。当日，产技军团FY26双11首次全链路压测通过✅，打响双", "author": "菜鸟产品技术部", "time": "2025-09-28 10:24", "url": "", "platform": "jizha"}, {"title": "FY26 双11大促产技军团KO&第一次全链路压测通过！", "content": "“AI好服务，全球稳定赢！”9月25日， FY26菜鸟产品技术部双11战役正式启幕，产技军团全员集结、严阵以待，以攻坚姿态开启新征程的挑战。当日，产技军团FY26双11首次全链路压测通过✅，打响双1", "author": "赵丽杲(栗糕)", "time": "2025-09-28 10:18", "url": "", "platform": "jizha"}, {"title": "苏皖大区-马鞍山洗护仓-小草莓提名", "content": "被提名人：李强 部门：马鞍山洗护仓 关键词：认真负责 提名理由： 在日常工作中，李强同学对待工作一丝不苟，始终以严谨的态度完成每一项任务。面对任务分配，李强同学从不推诿，以高效的执行力和坚决的落实态度", "author": "汤珍珍(林穗)", "time": "2025-09-26 15:26", "url": "", "platform": "jizha"}, {"title": "【产技】这一年员工体验上你有什么感受", "content": "结合去年8月的员工体验调研情况，重点围绕“高效办公”、“成长发展”、“专业人群”、“组织文化”等维度进行改进，一起来看看产技这一年都做了哪些事。 ▍搭建文档机制，提升文档沉淀和查找便利性，工作提效✅", "author": "段燕(以寒)", "time": "2025-09-02 11:06", "url": "", "platform": "jizha"}, {"title": "【在宽面对面】第13期", "content": "引言：Q1菜鸟目标全绿达成，离不开每位菜鸟同学的努力与付出，进入Q2，仍然需要继续全力以赴。变化带来新机遇和未知的挑战，我们要如何更好的应对？本期《在宽面对面》围绕着大家的真实感受，9", "author": "菜鸟产品技术部", "time": "2025-08-20 14:49", "url": "", "platform": "jizha"}, {"title": "FY26菜鸟产品技术部雏鹰特训营圆满落幕", "content": "🌟雏鹰振翅，启航未来 | 产品技术部雏鹰特训营圆满落幕在这个充满希望与成长的季节里，我们共同见证了“雏鹰特训营”的精彩篇章。 从线上学习到线下集训，从课堂理论到实战演练，这一路走来，每一位同学都以", "author": "李琦", "time": "2025-08-14 17:10", "url": "", "platform": "jizha"}, {"title": "万霖：敢想敢做，永远保持好奇心！丨百鸟天地会圆桌实录", "content": "7月中旬，180多位校招生在菜鸟总部园区与万霖、刘红、在宽、乘云进行了面对面交流，主要内容围绕技术应用、校招生发展与职场适应、心态调节三大方向。以下为交流内容实录：  AI技术与流程高效同学：我来自", "author": "菜小鸟", "time": "2025-08-07 10:26", "url": "", "platform": "jizha"}, {"title": "现在向你迎面走来的是最强收租天团！牛仔很忙，唱得响亮 | 袭榜好声音", "content": "钥匙、墨镜、牛仔帽 这不是西部牛仔而是收租三件套 高科技和新能源，统统不是问题 最帅包租公少丘已开麦：地网欢迎你，一起创奇迹！ 菜鸟好声音，音WE有你，满租可期！ 即日起来话题区上传好声音，或给帖子", "author": "菜小鸟", "time": "2025-07-25 13:04", "url": "", "platform": "jizha"}, {"title": "撕夜-李强-中国快递事业部-华北分拨区-天津一级分拨", "content": "所属部门：菜鸟集团-中国快递事业部-华北分拨区-天津一级分拨-天津一级分拨装车组 参赛选手：李强（李杨） 参赛作品：撕夜 一起为他加油吧", "author": "中国快递事业部-华北分拨区", "time": "2025-07-25 09:51", "url": "", "platform": "jizha"}, {"title": "翻开青春这本修炼手册，上面写满了“你今天有没有唱歌”？｜袭榜好声音", "content": "“生活和工作，就像人的左手和右手…” “左边，跟我一起画个龙；在你右边，画一道彩虹？” 以上为错误示范，正确的打开方式就是—— 和刘红一起，打开菜鸟这本最美的青春修炼手册 菜鸟好声音，音WE有你，未", "author": "菜小鸟", "time": "2025-07-24 15:49", "url": "", "platform": "jizha"}, {"title": "好声音开始后，财务同学的计算器上都出现了同一个数字... ｜ 袭榜好声音", "content": "“听说自从好声音开始后，财务同学的计算器都自动变身了” “变身？咋变的？” 他们的计算器上只剩下一个数字了——那就是第1️⃣ “卷王”团队来袭，一起来听申花放出的最动听狠话！ 菜鸟好声音，音WE有你", "author": "菜小鸟", "time": "2025-07-24 10:17", "url": "", "platform": "jizha"}, {"title": "人工智能bistro主理人来了：在宽为菜鸟AI代言打Call！｜袭榜好声音", "content": "今年最火的是什么？当然是AI啦，没用过的人还存在吗？ 菜鸟也有自己的AI吗？对呀，你没听过吗？ 没听过的话，就来听听主理人在宽怎么说—— 打开外放，超酷天团怒飙中音摔吉他 菜鸟好声音，音WE有你，A", "author": "菜小鸟", "time": "2025-07-23 11:16", "url": "", "platform": "jizha"}, {"title": "“山海无阻，迎篮而上”——FY26产技篮球赛总决赛之夜精彩回顾！", "content": "盛夏，骄阳似火青春如歌，7支队伍历经11场精彩纷呈的小组赛和半决赛。7月9日晚，迎来总决赛之夜，冠亚季军队伍将在此诞生！ 🎉恭喜来自自动驾驶中心的放宽心队夺得冠军！  🎉恭喜来自海外&国内快递产", "author": "菜鸟产品技术部", "time": "2025-07-10 18:15", "url": "", "platform": "jizha"}, {"title": "菜鸟成为亚太覆盖最广中资物流企业 | 菜鸟周报189期", "content": "🎁文末互动🎁 👉想在周报直播上看到啥？分享你的大胆的想法！👈 👉点这里观看直播回放！ 菜鸟周报189期 菜鸟全球供应链再升级：亚太仓配网络覆盖10个国家地区 菜鸟跨境物流团队“首公里安检数字", "author": "周报君", "time": "2025-07-10 11:36", "url": "", "platform": "jizha"}, {"title": "快讯：菜鸟与申通快递达成无人车合作，助力申通快递冲刺年内用车2000辆目标", "content": "7月8日，申通快递与菜鸟无人车达成战略合作。双方将聚焦末端配送场景，加速无人配送规模化应用，并联合探索适配多场景的新车型与模式。此次合作是申通继6月底客户开放日首次披露“年内投运2000 台无人车”", "author": "行业动态小助手", "time": "2025-07-08 17:12", "url": "", "platform": "jizha"}, {"title": "我们是一支想赢、也能赢的团队，这是菜鸟这12年沉淀下来最宝贵的财富 | 菜鸟2025年1-6月中国大区五年陈仪式", "content": "6月30日下午，中国大区共140余名五年陈同学在杭州总部园区温暖相聚，共同迎接这一美好时刻。 光阴流转，五年记录下了一路的荆棘与芬芳； 并肩相伴，五年让我们成为彼此眼中最好的自己。 五年，因爱而美好", "author": "菜小鸟", "time": "2025-07-01 09:41", "url": "", "platform": "jizha"}, {"title": "中国快递事业部-Morning Call-徐光煜", "content": "各位同学、各位伙伴，大家上午好！我是来自菜鸟集团中国快递事业部津冀业务区运营管理组的徐光煜，花名：自本，坚持自己的本心。非常高兴在今天的Morning Call和大家分享。刚刚打开阿里郎", "author": "徐光煜(自本)", "time": "2025-06-25 15:19", "url": "", "platform": "jizha"}, {"title": "家人们，来帮宽哥卖车了：年轻人的第一台智能座驾需要你超大胆的想法", "content": "为无人车GT-Lite上线打call！ 转发官方预售信息至朋友圈，助力菜鸟大卖哦 https://mp.weixin.qq.com/s/gZS2WGrh20fkSe9ddqf0iA （本文部分内容为C", "author": "哆啦C梦", "time": "2025-06-23 09:40", "url": "", "platform": "jizha"}, {"title": "【华北大区-沈阳商超仓】618第二波有劲少年", "content": "沈阳猫超618加劲儿小报，持续输出中 干劲-拆零叉车李帅干劲-拆零补货孙成实韧劲-拆零拣货王博干劲-拆零包装王佳伟韧劲-整箱拣货李强狠劲-整箱立库张小骞干劲-生产计划祖晓彤每一滴汗水都是勋章，每一份", "author": "李雪(莯芯)", "time": "2025-06-03 17:20", "url": "", "platform": "jizha"}, {"title": "产技4月刊｜月度重点资讯，一手掌握！", "content": "4月9日，“山海无阻，向阳而生”菜鸟产品技术部FY26全员大会在菜鸟总部园区报告厅盛大启幕！1200名同学齐聚现场，共同迎接新一年的挑战与机遇。在这里，我们整装待发、坚定信念、共同启航！>>点击阅", "author": "菜鸟产品技术部", "time": "2025-05-15 17:17", "url": "", "platform": "jizha"}, {"title": "【在宽面对面】第12期", "content": "引言：新财年开启，围绕产技和菜鸟的方向、目标、前景是什么？我们要去哪儿？又要做些什么？在过程中是否有什么迷茫和困惑，本期《在宽面对面》围绕着一系列调整和变化，12位同学与在宽一起展开了深入的", "author": "菜鸟产品技术部", "time": "2025-05-06 14:07", "url": "", "platform": "jizha"}, {"title": "[华北大区-直营天津恒安项目仓]--小草莓提报", "content": "🍓部门：直营天津西青恒安项目仓 🍓关键词：客户第一有践行 🍓李强同学是恒安仓内的“开仓元老”，恒安新开仓时李强积极主动承担了入库部退货岗位的职责，在收货部人员缺少的时候，他主动负责收退两组工", "author": "武瑶", "time": "2025-04-23 11:41", "url": "", "platform": "jizha"}, {"title": "山海无阻 向阳而生｜菜鸟产品技术部FY26全员大会精彩回顾！", "content": "菜鸟产品技术部FY26全员大会精彩回顾！ 4月9日，“山海无阻，向阳而生”菜鸟产品技术部FY26全员大会在菜鸟总部园区报告厅盛大启幕！1200名同学齐聚现场，共同迎接新一年的挑战与机遇。在这里，我们整", "author": "菜鸟产品技术部", "time": "2025-04-10 17:53", "url": "", "platform": "jizha"}, {"title": "【技术高一筹团队奖】全民AI", "content": "全民AI项目   项目成员： 「菜鸟首届AI马拉松」在宽 东芜 骁遥 靖宇 苏媚  兰博 南派 已晨 杨诺 语文 殊未 清溺 马少帅  陌柒 多马 景千 邵念乐 李梦 胡明坤   茳莱 葛钧 雷娇等", "author": "吴蔚(雷娇)", "time": "2025-03-31 19:50", "url": "", "platform": "jizha"}, {"title": "【技高一筹】数据一号工程战役", "content": "提名项目组数据一号工程项目组 项目成员平台侧：兰博、毕啸、雨玟、敦浩、田单、鸿翊、天余、欢见、贝书、清溺、齐艺、予歆、来凡 纵向数据团队：墨逐、书娴、龙磐、千鸣、青凝、李亮、非乐、修真、弘玄、岚菲等团", "author": "刘祥平(敦浩)", "time": "2025-03-26 17:24", "url": "", "platform": "jizha"}, {"title": "技高一筹团队奖：AI提效100W小时项目组", "content": "提名理由： 在2024年的生成式AI浪潮中，我们继续秉持菜鸟“低成本解决实际问题”的技术理念，坚定、集中地切入【企业toB AI应用】这个方向，持续捕获世界最佳模型与技术框架，应用到菜鸟具体的场景中去", "author": "张舒昱(殊未)", "time": "2025-03-26 15:11", "url": "", "platform": "jizha"}, {"title": "0317行业动态「阿里拟减持圆通套现9.5亿」「笨鸟速运官宣启网」", "content": "｜ 导读 阿里拟减持圆通套现9.5亿 极兔接入Deepseek大模型 山东邮管局印发通知今年无人快递车应用至少1500辆 笨鸟速运官宣启网 丰翼正式启动日本无人机物流业务 欧洲快递公司Geopost", "author": "行业动态小助手", "time": "2025-03-17 13:30", "url": "", "platform": "jizha"}, {"title": "【技术战略速递-快讯】民营企业座谈会上的讲话 含解读", "content": "「眼界」专注于扩容技术视野，探讨和交流技术领域的新趋势、新技术、新产品，提供洞见和启发。分为两类主题，一类是眼界线下场，包括深度对话、实地参访、游学等，一类是线上资讯「技术战略速递」，提供最新资讯", "author": "吴蔚(雷娇)", "time": "2025-02-18 13:45", "url": "", "platform": "jizha"}, {"title": "智创全球，蛇我其谁——菜鸟产技新春全球云年会全景回顾来袭！", "content": "伴随蛇年的脚步，蓊郁的春意扑面而来，1月20日，全球菜鸟产技人齐聚线上，欢度了一场精彩纷呈的新春全球云年会。会上我们回顾过去一年产技在数智化、全球化和产业化方面的卓越成绩，各个团队展示特色拜年SHO", "author": "菜鸟产品技术部", "time": "2025-01-22 17:31", "url": "", "platform": "jizha"}, {"title": "产技12月刊｜月度重点资讯，一手掌握！", "content": "▍一个好的AI助手，要有一颗成为「运营大脑」的心速递产技团队从站长移动化办公的局限性、咨询答疑成本高、数据分析时间长三大实际痛点出发，转化出相应所需的产品能力建设。通过 PC+移动双端支持、 搭建", "author": "菜鸟产品技术部", "time": "2025-01-22 17:16", "url": "", "platform": "jizha"}, {"title": "浙沪大区-【AE运营部-直营AE惠州仲恺优选B仓】-12月物流之星来啦", "content": "浙沪大区-【AE运营部-直营AE惠州仲恺优选B仓】12月物流之星来啦一分耕耘一分收获，恭喜以下同学被评选为12月份物流之星~物流之星：寇李强部门岗位：直营AE惠州仲恺优选B仓-库维-盘点  物流之星：", "author": "黄涛(普贤)", "time": "2025-01-06 13:42", "url": "", "platform": "jizha"}, {"title": "这群特别的人，来了一场特别的跨年 | 菜鸟2024年7-12月中国大区五年陈仪式【文末新年有奖互动】", "content": "12月30日下午，中国大区共230余名五年陈同学在杭州总部园区温暖相聚，共同迎接在菜鸟的五年时刻。 站在旧岁新年的交汇口，拾起往日的收获，与2025一起再度出发。 团圆在一起，我们有着不同的面孔，但", "author": "菜小鸟", "time": "2024-12-31 15:54", "url": "", "platform": "jizha"}, {"title": "Goodbye,2024! Come and Check Your Personal Jizha Annual Review", "content": "Standing at the crossroads of 2024 and 2025, we look back and reflect on our growth.  This year, we", "author": "菜小鸟", "time": "2024-12-31 15:38", "url": "", "platform": "jizha"}, {"title": "你的2024年终总结已生成，点击收获满满精彩！", "content": "站在2024和2025的交汇路口，回看过往，细数成长。 这一年，我们一起用脚步丈量过从出发到跨越的距离 新一岁，让勇气与陪伴成为我们行囊中的第一件礼物 来吧，一起重温，属于我们的2024记忆  叽喳", "author": "菜小鸟", "time": "2024-12-30 17:33", "url": "", "platform": "jizha"}, {"title": "", "content": "?【获奖名单公布】你身边的这些人竟是prompt大师！5 月 31 日，钉钉魔法棒斜杠“/”正式面向企业客户邀测 而内网同学们如火如荼参与  接招吧！办公达人  钉钉文档智能助手创作大赛 大赛连续两天冲上内网热帖榜 涌现了一大批prompt大师 有用钉钉文档智能助手 为同事写小说的?    产出优化客户体验的方案的?    制作outing攻略的? ? 可以说是群英荟萃 ? 本次大赛在阿里味儿和菜鸟叽喳同步举行 共收获 131 份有效参赛作品 详情见阿里味儿帖> 菜鸟叽喳帖> 经过大众投票以及结合大赛特邀评委 @叶军（不穷）@李强（在宽）@黄非  @高峰（髙峰） 评选与点评 最终有 8 部作品", "author": "", "time": "2023-6-6 10:00", "url": "https://www.aliway.com/read.php?tid=1513029", "platform": "alinei"}, {"title": "", "content": "行易毕业了，江湖再见今天是一个很普通的日子，是我在菜鸟的第2318天，即将离开阿里想说点啥，却又有点天凉好个秋的味道。听说花名不能保留，那么还是留个脚印吧，希望有人翻起的时候，也知道曾经有个叫行易的程序员来过。 放张老照片怀旧一下，程序员堆里找不出我吧？哈 首先还是要感谢让我来到阿里的@在宽(19177)，以及给我很多帮助的师兄@大通(15283)，感谢你们让我体验了不一样的阿里，让一个只会写代码的程序员开启了一扇新的人生大门，收获了丰富的个人成长。 感谢@不休(3788)@那澜(86695)@媤璐(26451)@老丘(106617)给我这样一个管理菜鸟�%...陈罡2022-2-10 11:", "author": "", "time": "2022-2-10 11:45", "url": "https://www.aliway.com/read.php?tid=611140", "platform": "alinei"}, {"title": "菜鸟产品技术全力以赴支持好大家", "content": "", "author": "李强(在宽)", "time": "2022-04-28 09:54", "url": "", "platform": "jizha"}, {"title": "", "content": "【凝心聚力 务实笃行】CTO党委召开党委扩大会议6月1日，CTO党委扩大会议在西溪园区党群服务中心召开。阿里巴巴集团党委书记邵晓锋，集团党办主任许艳出席会议；CTO党委书记程立，党委副书记李强、杨浩，党委组织委员吴勇慧，党委宣传委员陈盈，党委委员曲琳、崔婧，各党支部书记、委员等21人通过线上线下结合的方式参与本次会议。 大会开始，由主持人党委副书记李强分享了CTO党委基本情况及组织架构  ；分别从党员回归、党费缴纳、党员发展、活动组宣、技术公益和党建馆落地项目等方面介绍了CTO党委的党建工作现状 党委副书记杨浩，从基础四%...技术线党同学2021-6-7 11:35阿里味儿回复数: 0点击量", "author": "", "time": "2021-6-7 11:35", "url": "https://www.aliway.com/read.php?tid=561651", "platform": "alinei"}, {"title": "", "content": "鸟戈 毕业了比较不善言辞，就不多说了，真心感谢帮助过我的大家，是你们让我一路前进的时候少了许多的坎坷，也从你们身上学习到很多有用的知识。@不繁(9204)@悦麟(12930)@雷舍(31123)@验钞(15080)@广呆(143517)无相 @宸兮(105855)@在宽(19177) 也非常感谢曾经一起相处过的ICBU和AE的小伙伴~一起战斗过的业务方和产品同学~王畅 @一冷(7511)@永阳(124787)@臻美(26346)@马特(74082)@天敖(15013)@三慧(44950)@华生(16378)@威硕(58278)，在一路的争吵过程中让我对业务的理解越来越深。 也十分感谢与我并肩作", "author": "", "time": "2021-4-9 14:22", "url": "https://www.aliway.com/read.php?tid=551332", "platform": "alinei"}, {"title": "", "content": "菜鸟CTO在宽：最好的物流科技就是能扎实服务好实体经济【雷锋网】在宽）认为，核心的因素是：快递行业数字化。 如今每个分拨中心都是高度自动化，都与电子面单息息相关。而菜鸟的初心，是希望做物流产业互联网，一方面要投入到国际、末端和供应链等物流运营当中，解决别人解决不了的问题，让商业运行更高效。另一方面也要通过技术服务，实实在在做一些能引领整个行业数字化发展的事情，“如果站在互联网的技术视角看物流行业，其实我们一直在扎根做实实在在的事情。” 好的技术要能解决实际问题在宽向雷锋网表示，一直以来，菜鸟内部的技术文化�%...张桥刚(小桥)2021-11-4 20:59阿里味儿回复数: 5点击量: 470", "author": "", "time": "2021-11-4 20:59", "url": "https://www.aliway.com/read.php?tid=592951", "platform": "alinei"}, {"title": "", "content": "全球化，Fighting All in One——新零售技术 AE升级中台融合SIRIUS战役誓师大会(点击下图回顾现场)              2019年3月7日上午，承载着AE技术升级并与集团国际化中台融合重要使命的战役—SIRIUS战役誓师大会在圆月山庄举行。同时，SIRIUS的启动也打响了新零售技术国际化战略新财年的第一枪！       范禹、MM、思函、鲁肃、玄难、大少、四虎、在宽、等业务方和兄弟团队负责人来到KO现场。       新零售技术国际化战略负责人在宽 现场介绍了SIRIUS战役的目标和意义。在宽表示，这次战役不仅是国际化团队的战役，也是阿里经济体多个业务团队的联合战", "author": "", "time": "2019-3-8 10:39", "url": "https://www.aliway.com/read.php?tid=448713", "platform": "alinei"}, {"title": "", "content": "天水离职帖2011年7月18日入职报道的场景恍如昨日。 今天是我在阿里工作的最后一天，2538天，7年工作在阿里、生活在阿里、收获在阿里。 马老师说过要在自我感觉最好的时候离开阿里，去追寻自己小小的梦想。 此时内心最想说的就是感谢与祝福，需要感谢的人太多太多。 首先感谢曾经带过我的主管们，重楼、长恭、怀素、允礼、额图、玉坤，感谢你们帮助我一步步成长。还要感谢人生导师玄难和在宽，在迷茫的时候引导我寻找新的目标、提升自我认知。 同时感谢曾经一起合作过的伙伴们，宝驹、正轩、婧雅等天猫%...马金金(天水)2018-6-28 09:04阿里味儿回复数: 150点击量: 12468", "author": "", "time": "2018-6-28 09:04", "url": "https://www.aliway.com/read.php?tid=413929", "platform": "alinei"}, {"title": "", "content": "百阿曰百阿曰 十月八 别国庆 迎百阿 九九四 掺合心 聚凤栖思懿班 老中医 码克四 不二团 幺零幺 葫芦娃追梦者 第一课 忆过去 惜如今 十八人 甘苦共户外行 安全墙 双脚离 达芬奇 龙取水 罗汉塔寻文化 阿里日 人三时 一三五 哪十派 讲土话在宽兄 接地气 释阿里 雪飞兄 严辞令 数据图零距离 找妈妈 大文娱 达摩院 阿里云 吃盒马逍遥子 必修课 小客栈 烛夜谈 育儿经 感情史玄玥到 讲绩效 三七五 A B C  三二五 最热门小剧场 乐开花 容嬷嬷 又扎针 怜金锁 竟躺枪周小结 公益行 老套路 捡垃圾 收能量 教种树价值观 �%...何涌(犹飞)2018-10-25 09:40阿里味儿回复", "author": "", "time": "2018-10-25 09:40", "url": "https://www.aliway.com/read.php?tid=431316", "platform": "alinei"}, {"title": "", "content": "《投票》菜鸟哪个部门的男人认真起来最帅（有视频有相片）盖楼有奖 盖楼有奖 盖楼有奖 逢7、17、27、37。。。就有奖品 该活动9月12号上午10点结束 七嘴八舌： 有没有这种体验，走进一个菜鸟会议室，要么男士全屏，要么就点缀着那么几个女孩。 这么多良将的园子里，总有一个园草重生的地方，你认为是哪个部门？ （看视频、看相片，实力评选） A: 产品与技术（在宽说：颜值担当在这） B: 仓配&供应链（磁针说：够爷们才有味道） C: 供应链运营（王政说：需要选吗，随便甩大家几个街区） D: 客户运营中心(赛蒙说：我看你们有没有眼光) E: 法务（啸川：选我，家里有啥�%...李丽娟2017-9-11", "author": "", "time": "2017-9-11 14:27", "url": "https://www.aliway.com/read.php?tid=375379", "platform": "alinei"}, {"title": "", "content": "他们今年的KPI只有一条：去实现！2017，菜鸟技术人、数据人 携手业务伙伴，去实现 携手专业伙伴，去实现 携手CP伙伴，去实现 2017，我们坚定理想，突破自己，去实现！ 直入主题（点击直通）： 技术主题成果体验展 年度优秀技术奖项评选及结果 HACKATHON黑客马拉松大赛 万霖致辞 菲青、在宽讲话 菜鸟技术Kick off精彩回顾张筠(莫契)2017-4-7 16:30阿里味儿回复数: 31点击量: 1276", "author": "", "time": "2017-4-7 16:30", "url": "https://www.aliway.com/read.php?tid=358846", "platform": "alinei"}, {"title": "", "content": "权限管理平台及规范、信息安全培训（天猫开发专场）权限管理平台及规范、信息安全培训（天猫开发专场） 温馨提醒：内部交流，内部分享。请遵循《集团商业行为准则》，勿在任何对外渠道中转载       1月13日下午在西溪园区举办了权限管理规范及信息安全的交流会——天猫核心开发专场，作为整个集团的第一站，拉开了各BU权限安全宣导的序幕！        感谢大家在忙碌的周一，利用宝贵的时间和我们一起交流关于权限安全的这些事， 也非常感谢各位优秀的技术大拿们在现场提供的宝贵建议！同时，也感谢在宽全程的协助、以及技术部管理层对权限安全...集团账号权限安全22014-1-14 20:04阿里味儿回复数: 0点", "author": "", "time": "2014-1-14 20:04", "url": "https://www.aliway.com/read.php?tid=228362", "platform": "alinei"}, {"title": "", "content": "2012年集团M4P9晋升公告各位亲， 经过各 BU 提名， 360 度评估，集团 M4P9 晋升委员会面试，以下同事自 2013 年 4 月 1 日获得晋升。祝贺他们！并期待他们更精彩的表现 ~ ！   序号  姓名 公司 - 部门  晋升前层级  晋升后层级  1 齐俊生 国际事业部 -B2B 国际 - 采购直达市场 M3 M4 2 不穷(叶军)  国际事业部 - 国际技术部 -B2C 国际技术部 - 网站架构 P8 P9 3 南天（庄卓然)  天猫事业部 - 产品技术部 - 导购 & 垂直线 M3 M4 4 在宽(李强)  天猫事业部 - 产品技术部 - 商家平台 & 服务 M3 M4 ", "author": "", "time": "2013-6-18 15:05", "url": "https://www.aliway.com/read.php?tid=202759", "platform": "alinei"}, {"title": "", "content": "春联也有打油的！前两天夜里半睡半醒之时，突然回想起年初天猫产品技术年会上，作的一副乱七八糟的春联，觉得还蛮有才的，依稀还记得，记下来，备忘。（大家可以看懂的！）   上联上：冰罗松，雪根仙，冬逝春来吟猫儿； 上联下：心在宽，人自在，情怡梦远溢孤城。 下联上：迈玉关，跃南天，锦绣江南绫罗成； 下联下：闻香宝，艳万里，春到百花输优昙。 横批：人尽逍遥！陆旻2012-9-28 13:36阿里味儿回复数: 0点击量: 0", "author": "", "time": "2012-9-28 13:36", "url": "https://www.aliway.com/read.php?tid=176549", "platform": "alinei"}, {"title": "", "content": "给我们的内部猎头们鼓掌! 哗啦啦~在宽、云碧 在18（要发）这样一个日子，我们的颁奖嘉宾MM和享受内推之惠的大户菲青、行癫、优昙扛着礼品、奖状和一盆充满爱意的仙人掌走进了内部猎头的身边，进行走动式颁奖！ 当奖品呈现，当拥抱来袭，当感谢道来，我们的获奖小二们绽开了“如花”的笑脸 南天.jpg 南天 代五竹.jpg 图片中人物为若虚（属于替五竹待领人物，大家关注奖品即可！哈哈） 代华黎.jpg 图片人物为另一推荐达人-毕玄（华黎幸福婚嫁中~） 在宽.jpg 在宽 云碧.jpg 云碧 代根仙.jpg此人属于2010年内推大奖有力竞争人物（根仙正在埋头开会中%...董毅2010-3-19 13:27阿", "author": "", "time": "2010-3-19 13:27", "url": "https://www.aliway.com/read.php?tid=18058", "platform": "alinei"}, {"title": "", "content": "钢铁是怎样炼成的？CTU4.0背后的故事0的第一个实时BI模型成功上线，效果完美，所有参与者都激动万分。在这个结果背后的过程中，又隐藏了多少人的心血和智慧？           拉开序幕            2月1日，在宽提出了业务安全产品2011年的总体方向，“继续改进CTU3.0的指标模型，规则引擎与BI模型整合，从数据过滤向行为分析转变”。CTU4.0就是从这里拉开序幕，在宽提出了模型、指标等的一些新思路，那时候在宽说的目标大家心里都还没底，特别是模型这块，虽然我们很早就提出了CTU要整合模型，但没人知道模型究竟是什么样子的，又是怎么样和CTU结合的，在宽...叶长程(卢云)2010-", "author": "", "time": "2010-12-2 09:33", "url": "https://www.aliway.com/read.php?tid=65699", "platform": "alinei"}, {"title": "", "content": "技术大学讲师饕餮盛宴！技术大学讲师饕餮盛宴，在柳浪闻莺非常文艺的拉丁娜自助餐厅举行。2.jpg技术大学讲师发展路径如下：优秀讲师--导师--大师--宗师--太师 盘点2011年，共有以下33位优秀讲师晋升为导师，他们是：青灵 、绣云、干仙、伏威、蓝大、飞花、玉帆、渡虚、丘虚、曲山、曲琳、 碧瑶、郭芙、在宽、楚材、叔度小凡、胜通、天狐、天彤、霜波、张巡、少杰、风八、成泰、不愁、锋寒、沈询、辰战、博一、撒迦、倩薇、玄惭 共有8位导师晋升为大师，他们是：若海、曲山、放翁、雷卷、 黄裳、桂南、孤城、毕玄 共有2位�%...宗伟2010-11-15 11:13阿里味儿回复数: 13点击量: 403", "author": "", "time": "2010-11-15 11:13", "url": "https://www.aliway.com/read.php?tid=62859", "platform": "alinei"}, {"title": "", "content": "菜鸟CTO在宽：最好的物流科技就是能扎实服务好实体经济【雷锋网】", "author": "", "time": "", "url": "https://www.aliway.com/read.php?tid=592951", "platform": "alinei"}];
+
+let forumFilter = 'all', forumSearch = '', forumDisplayCount = 15;
+
+function getForumYear(timeStr) {
+    if (!timeStr) return '未知';
+    const m4 = timeStr.match(/^(\d{4})/);
+    if (m4) return m4[1];
+    const m2 = timeStr.match(/^(\d{2})-(\d{2})/);
+    if (m2) return '2026';
+    return '未知';
+}
+
+function getFilteredForumPosts() {
+    return FORUM_POSTS.filter(p => {
+        if (forumFilter !== 'all' && p.platform !== forumFilter) return false;
+        if (forumSearch) {
+            const q = forumSearch.toLowerCase();
+            const text = ((p.title||'') + ' ' + (p.content||'') + ' ' + (p.author||'')).toLowerCase();
+            if (!text.includes(q)) return false;
+        }
+        return true;
+    });
+}
+
+function highlightForumText(text, query) {
+    if (!query || !text) return escapeHtml(text);
+    const safe = escapeHtml(text);
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return safe.replace(new RegExp('(' + escaped + ')', 'gi'), '<span class="forum-highlight">$1</span>');
+}
+
+function renderForumPosts() {
+    const container = document.getElementById('forum-posts-container');
+    const loadMore = document.getElementById('forum-loadmore-wrap');
+    const empty = document.getElementById('forum-empty');
+    const filtered = getFilteredForumPosts();
+    const toShow = filtered.slice(0, forumDisplayCount);
+
+    if (filtered.length === 0) {
+        container.innerHTML = '';
+        loadMore.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+    loadMore.style.display = forumDisplayCount < filtered.length ? 'block' : 'none';
+
+    let html = '', lastYear = '';
+    toShow.forEach(p => {
+        const year = getForumYear(p.time);
+        if (year !== lastYear) {
+            html += `<div class="forum-year-header">${year}${year !== '未知' ? ' 年' : ''}</div>`;
+            lastYear = year;
+        }
+        const platformLabel = p.platform === 'jizha' ? '菜鸟叽喳' : '阿里味儿';
+        const platformClass = p.platform === 'jizha' ? 'jizha' : 'alinei';
+        const title = p.title ? highlightForumText(p.title, forumSearch) : '';
+        const content = p.content ? highlightForumText(p.content, forumSearch) : '';
+
+        html += `<div class="forum-post">`;
+        if (title) html += `<div class="forum-post-title">${title}</div>`;
+        if (content) html += `<div class="forum-post-content">${content}</div>`;
+        html += `<div class="forum-post-meta">`;
+        html += `<span class="forum-badge ${platformClass}">${platformLabel}</span>`;
+        if (p.time) html += `<span class="forum-post-time">${escapeHtml(p.time)}</span>`;
+        if (p.author) html += `<span class="forum-post-author">${highlightForumText(p.author, forumSearch)}</span>`;
+        if (p.url) html += `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">查看原帖 →</a>`;
+        html += `</div></div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function filterForum(type) {
+    forumFilter = type;
+    forumDisplayCount = 15;
+    document.querySelectorAll('.forum-filter-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('ff-' + type).classList.add('active');
+    renderForumPosts();
+}
+
+function searchForum(query) {
+    forumSearch = query.trim();
+    forumDisplayCount = 15;
+    renderForumPosts();
+}
+
+function loadMorePosts() {
+    forumDisplayCount += 15;
+    renderForumPosts();
+}
+
+// Init forum when journey tab is shown
+document.getElementById('tab-journey').addEventListener('click', function() {
+    setTimeout(renderForumPosts, 100);
+});
+
+// Also render if already on journey tab
+if (currentTab === 'journey') renderForumPosts();
+
+// Show storage mode
+(function() {
+    const el = document.getElementById('storage-mode');
+    if (el) el.textContent = firebaseReady ? '☁️ 云端同步模式' : '💾 本地存储模式';
+})();
+</script>
 
 </body>
 </html>
