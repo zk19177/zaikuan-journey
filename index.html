@@ -1099,7 +1099,6 @@
             <div class="msg-form" id="msg-form">
                 <div class="msg-form-row">
                     <input type="text" class="msg-input" id="msg-name" placeholder="你的名字（必填）" maxlength="30" style="flex:1;">
-                    <input type="text" class="msg-input" id="msg-dept" placeholder="部门 / 花名（选填）" maxlength="50" style="flex:1;">
                 </div>
                 <textarea class="msg-textarea" id="msg-content" placeholder="写下你想说的话..." maxlength="2000"></textarea>
                 <div class="msg-preview" id="msg-preview"></div>
@@ -1119,8 +1118,15 @@
             <div class="msg-count" id="msg-count"></div>
             <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
                 <span id="storage-mode" style="font-size:12px;color:#999;margin-right:auto;"></span>
+                <button onclick="toggleAdmin()" id="admin-toggle-btn" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">管理员</button>
                 <button onclick="exportMessages()" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">导出留言</button>
                 <button onclick="importMessages()" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">导入留言</button>
+            </div>
+
+            <!-- Word Cloud -->
+            <div id="wordcloud-wrap" style="background:var(--bg-card);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-soft);margin-bottom:24px;border:1px solid rgba(0,0,0,0.04);position:relative;overflow:hidden;">
+                <div style="text-align:center;margin-bottom:12px;font-size:14px;font-weight:600;color:var(--text-secondary);">留言热词</div>
+                <canvas id="wordcloud-canvas" style="width:100%;height:260px;display:block;"></canvas>
             </div>
 
             <!-- Messages list -->
@@ -1597,6 +1603,20 @@ let editingId = null;
 let db = null;
 let firebaseReady = false;
 const LS_KEY = 'zk_guestbook_messages';
+const LS_TOKEN_KEY = 'zk_owner_token';
+const ADMIN_PASSWORD = 'zk19177admin';
+let isAdmin = false;
+
+// Generate or retrieve a unique browser token to identify "self" messages
+function getOwnerToken() {
+    let token = localStorage.getItem(LS_TOKEN_KEY);
+    if (!token) {
+        token = 'tok_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem(LS_TOKEN_KEY, token);
+    }
+    return token;
+}
+const MY_TOKEN = getOwnerToken();
 
 // Firebase config - replace with real values to enable cloud sync
 const FIREBASE_CONFIG = {
@@ -1620,16 +1640,36 @@ try {
     console.log('Firebase not configured yet, using local mode');
 }
 
+// ---- Image compression helper ----
+function compressImage(dataUrl, maxW, quality) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+    });
+}
+
 // ---- localStorage helpers ----
 function saveToLocal() {
     try {
-        // Save messages without large media data URIs to keep localStorage lean
-        const lite = messages.map(m => ({
-            ...m,
-            media: (m.media || []).map(f => f.data && f.data.length > 500000 ? { type: f.type, data: '[too_large]' } : f)
-        }));
-        localStorage.setItem(LS_KEY, JSON.stringify(lite));
-    } catch(e) { console.warn('localStorage save failed', e); }
+        localStorage.setItem(LS_KEY, JSON.stringify(messages));
+    } catch(e) {
+        // If quota exceeded, try saving without media
+        console.warn('localStorage save failed, trying without media', e);
+        try {
+            const lite = messages.map(m => ({ ...m, media: [] }));
+            localStorage.setItem(LS_KEY, JSON.stringify(lite));
+        } catch(e2) { console.warn('localStorage save totally failed', e2); }
+    }
 }
 
 function loadFromLocal() {
@@ -1637,13 +1677,7 @@ function loadFromLocal() {
         const raw = localStorage.getItem(LS_KEY);
         if (raw) {
             const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                // Filter out media placeholders
-                return parsed.map(m => ({
-                    ...m,
-                    media: (m.media || []).filter(f => f.data !== '[too_large]')
-                }));
-            }
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
     } catch(e) { console.warn('localStorage load failed', e); }
     return null;
@@ -1659,20 +1693,20 @@ if (!firebaseReady) {
             {
                 id: 'sample1',
                 name: '菜鸟产品技术部',
-                dept: '集体留言',
                 content: '在宽，感谢你18年来的坚守与付出！从全球化CTO到菜鸟CTO，你用"组合技术的复利"推动了物流科技的边界。简单、极致、贴地、疾飞——这不仅是菜鸟的价值观，更是你的真实写照。祝前程似锦，新的旅途一路坦荡！',
                 media: [],
                 time: Date.now() - 86400000 * 2,
-                color: '#4facfe'
+                color: '#4facfe',
+                ownerToken: '__system__'
             },
             {
                 id: 'sample2',
                 name: '一位菜鸟技术同学',
-                dept: '',
                 content: '宽哥，在你面对面的13期里，你说的那句"敢想敢试，别怕错"一直激励着我。谢谢你为我们创造了这么好的技术氛围。江湖再见！',
                 media: [],
                 time: Date.now() - 86400000,
-                color: '#43e97b'
+                color: '#43e97b',
+                ownerToken: '__system__'
             }
         ];
         saveToLocal();
@@ -1703,8 +1737,13 @@ function handleFileUpload(event, type) {
     files.forEach(file => {
         if (uploadedFiles.length >= 6) return;
         const reader = new FileReader();
-        reader.onload = (e) => {
-            uploadedFiles.push({ type, data: e.target.result, name: file.name });
+        reader.onload = async (e) => {
+            let data = e.target.result;
+            // Compress images to fit in localStorage (~200KB max per image)
+            if (type === 'image') {
+                data = await compressImage(data, 800, 0.6);
+            }
+            uploadedFiles.push({ type, data, name: file.name });
             renderPreviews();
         };
         reader.readAsDataURL(file);
@@ -1729,7 +1768,6 @@ function removeFile(idx) {
 
 function submitMessage() {
     const nameEl = document.getElementById('msg-name');
-    const deptEl = document.getElementById('msg-dept');
     const contentEl = document.getElementById('msg-content');
     const name = nameEl.value.trim();
     const content = contentEl.value.trim();
@@ -1750,12 +1788,12 @@ function submitMessage() {
     const msg = {
         id: editingId || ('msg_' + Date.now() + '_' + Math.random().toString(36).substr(2,6)),
         name: name,
-        dept: deptEl.value.trim(),
         content: content,
         media: uploadedFiles.map(f => ({ type: f.type, data: f.data })),
         time: editingId ? messages.find(m=>m.id===editingId)?.time || Date.now() : Date.now(),
         color: getAvatarColor(name),
-        editedAt: editingId ? Date.now() : null
+        editedAt: editingId ? Date.now() : null,
+        ownerToken: editingId ? (messages.find(m=>m.id===editingId)?.ownerToken || MY_TOKEN) : MY_TOKEN
     };
 
     if (editingId) {
@@ -1774,20 +1812,23 @@ function submitMessage() {
     saveToLocal();
 
     nameEl.value = '';
-    deptEl.value = '';
     contentEl.value = '';
     uploadedFiles = [];
     renderPreviews();
     renderMessages();
+    updateWordCloud();
     document.getElementById('msg-submit').textContent = '发送留言';
+}
+
+function canEditMessage(msg) {
+    return isAdmin || msg.ownerToken === MY_TOKEN;
 }
 
 function editMessage(id) {
     const msg = messages.find(m => m.id === id);
-    if (!msg) return;
+    if (!msg || !canEditMessage(msg)) return;
     editingId = id;
     document.getElementById('msg-name').value = msg.name;
-    document.getElementById('msg-dept').value = msg.dept || '';
     document.getElementById('msg-content').value = msg.content;
     uploadedFiles = (msg.media || []).map(m => ({ type: m.type, data: m.data, name: '' }));
     renderPreviews();
@@ -1796,6 +1837,8 @@ function editMessage(id) {
 }
 
 function deleteMessage(id) {
+    const msg = messages.find(m => m.id === id);
+    if (!msg || !canEditMessage(msg)) return;
     if (!confirm('确定要删除这条留言吗？')) return;
     messages = messages.filter(m => m.id !== id);
     if (firebaseReady && db) {
@@ -1803,6 +1846,28 @@ function deleteMessage(id) {
     }
     saveToLocal();
     renderMessages();
+    updateWordCloud();
+}
+
+function toggleAdmin() {
+    if (isAdmin) {
+        isAdmin = false;
+        document.getElementById('admin-toggle-btn').textContent = '管理员';
+        document.getElementById('admin-toggle-btn').style.color = '#666';
+        document.getElementById('admin-toggle-btn').style.borderColor = '#ddd';
+        renderMessages();
+        return;
+    }
+    const pw = prompt('请输入管理员密码：');
+    if (pw === ADMIN_PASSWORD) {
+        isAdmin = true;
+        document.getElementById('admin-toggle-btn').textContent = '退出管理';
+        document.getElementById('admin-toggle-btn').style.color = '#ff7e5f';
+        document.getElementById('admin-toggle-btn').style.borderColor = '#ff7e5f';
+        renderMessages();
+    } else if (pw !== null) {
+        alert('密码错误');
+    }
 }
 
 // ---- Export / Import ----
@@ -1872,19 +1937,22 @@ function renderMessages() {
             if (m.type === 'image') return `<img src="${m.data}" onclick="openLightbox('${m.data.replace(/'/g, "\\'")}')" alt="">`;
             return `<video src="${m.data}" controls></video>`;
         }).join('');
+        const canEdit = canEditMessage(msg);
+        const actionsHtml = canEdit ? `
+                <div class="msg-actions">
+                    <button class="msg-action-btn" onclick="editMessage('${msg.id}')">编辑</button>
+                    <button class="msg-action-btn delete" onclick="deleteMessage('${msg.id}')">删除</button>
+                </div>` : '';
 
         return `
         <div class="msg-card">
             <div class="msg-card-header">
                 <div class="msg-avatar" style="background:${color};">${initial}</div>
                 <div>
-                    <div class="msg-name">${escapeHtml(msg.name)}${msg.dept ? ` <span style="font-weight:400;color:var(--text-light);font-size:12px;">· ${escapeHtml(msg.dept)}</span>` : ''}</div>
+                    <div class="msg-name">${escapeHtml(msg.name)}</div>
                 </div>
                 <div class="msg-time">${formatTime(msg.time)}${msg.editedAt ? ' (已编辑)' : ''}</div>
-                <div class="msg-actions">
-                    <button class="msg-action-btn" onclick="editMessage('${msg.id}')">编辑</button>
-                    <button class="msg-action-btn delete" onclick="deleteMessage('${msg.id}')">删除</button>
-                </div>
+                ${actionsHtml}
             </div>
             <div class="msg-text">${escapeHtml(msg.content)}</div>
             ${mediaHtml ? `<div class="msg-media">${mediaHtml}</div>` : ''}
@@ -2021,6 +2089,141 @@ if (currentTab === 'journey') renderForumPosts();
     const el = document.getElementById('storage-mode');
     if (el) el.textContent = firebaseReady ? '☁️ 云端同步模式' : '💾 本地存储模式';
 })();
+
+// ============ WORD CLOUD ============
+const WC_STOP_WORDS = new Set([
+    '的','了','是','在','我','有','和','就','不','人','都','一','一个','上','也','很','到','说','要','去','你',
+    '会','着','没有','看','好','自己','这','那','她','他','吗','什么','让','比','被','把','做','能','想','但',
+    '还','才','给','最','更','这个','那个','已经','可以','所以','因为','如果','虽然','但是','然后','或者',
+    '而且','不过','以后','每','来','得','吧','啊','呢','哦','嗯','啦','呀','么','哈','嘿','它','们','与',
+    '为','以','及','对','从','等','过','里','中','后','前','时','下','多','大','小','个','些','只',
+    '又','之','于','而','其','同','这么','那么','怎么','真的','一起','我们','你们','他们','大家','非常',
+    '一直','这样','那样','什么','为什么','怎么样','真','太','地','之后','觉得'
+]);
+
+const WC_COLORS = [
+    '#4facfe','#00f2fe','#43e97b','#38f9d7','#f6d365','#fda085',
+    '#ff7e5f','#feb47b','#a18cd1','#fbc2eb','#6c5ce7','#e17055',
+    '#00b894','#fdcb6e','#e84393','#0984e3','#00cec9','#fd79a8'
+];
+
+function extractWords(text) {
+    // Simple Chinese + English word extraction
+    const words = [];
+    // Chinese: extract 2-4 char segments using a sliding window + common words
+    const cn = text.replace(/[^\u4e00-\u9fa5]/g, '');
+    for (let len = 4; len >= 2; len--) {
+        for (let i = 0; i <= cn.length - len; i++) {
+            const w = cn.substr(i, len);
+            if (!WC_STOP_WORDS.has(w)) words.push(w);
+        }
+    }
+    // English words
+    const en = text.match(/[a-zA-Z]{3,}/g) || [];
+    en.forEach(w => words.push(w.toLowerCase()));
+    return words;
+}
+
+function getWordFrequencies() {
+    const freq = {};
+    messages.forEach(m => {
+        const words = extractWords((m.content || '') + ' ' + (m.name || ''));
+        words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+    });
+    // Sort by frequency and take top 60
+    return Object.entries(freq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 60)
+        .map(([word, count]) => ({ word, count }));
+}
+
+// Animated floating word cloud on canvas
+let wcAnimId = null;
+let wcParticles = [];
+
+function updateWordCloud() {
+    const canvas = document.getElementById('wordcloud-canvas');
+    if (!canvas) return;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width - 48;
+    canvas.height = 260;
+    const ctx = canvas.getContext('2d');
+
+    const words = getWordFrequencies();
+    if (words.length === 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ccc';
+        ctx.font = '14px "Noto Sans SC"';
+        ctx.textAlign = 'center';
+        ctx.fillText('留言越多，词云越丰富', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
+    const maxCount = words[0].count;
+    const minSize = 13, maxSize = 42;
+
+    // Create particles for each word
+    wcParticles = words.map((w, i) => {
+        const size = Math.max(minSize, Math.min(maxSize, (w.count / maxCount) * maxSize));
+        return {
+            word: w.word,
+            count: w.count,
+            x: Math.random() * (canvas.width - 80) + 40,
+            y: Math.random() * (canvas.height - 40) + 20,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: (Math.random() - 0.5) * 0.3,
+            size: size,
+            color: WC_COLORS[i % WC_COLORS.length],
+            alpha: 0,
+            targetAlpha: 0.15 + (w.count / maxCount) * 0.85,
+            rotation: (Math.random() - 0.5) * 0.15,
+            phase: Math.random() * Math.PI * 2
+        };
+    });
+
+    if (wcAnimId) cancelAnimationFrame(wcAnimId);
+    let t = 0;
+    function animateWC() {
+        t++;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        wcParticles.forEach((p, i) => {
+            // Fade in
+            p.alpha += (p.targetAlpha - p.alpha) * 0.03;
+            // Float
+            p.x += p.vx + Math.sin(t * 0.008 + p.phase) * 0.15;
+            p.y += p.vy + Math.cos(t * 0.006 + p.phase) * 0.1;
+            // Bounce off edges
+            if (p.x < 10 || p.x > canvas.width - 10) p.vx *= -1;
+            if (p.y < p.size || p.y > canvas.height - 5) p.vy *= -1;
+            p.x = Math.max(10, Math.min(canvas.width - 10, p.x));
+            p.y = Math.max(p.size, Math.min(canvas.height - 5, p.y));
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.globalAlpha = p.alpha;
+            ctx.font = `${p.size >= 28 ? '700' : p.size >= 18 ? '600' : '400'} ${p.size}px "Noto Sans SC", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Glow for large words
+            if (p.size >= 24) {
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 12 + Math.sin(t * 0.02 + p.phase) * 6;
+            }
+            ctx.fillStyle = p.color;
+            ctx.fillText(p.word, 0, 0);
+            ctx.restore();
+        });
+        wcAnimId = requestAnimationFrame(animateWC);
+    }
+    animateWC();
+}
+
+// Init word cloud
+setTimeout(updateWordCloud, 300);
+// Redraw on resize
+window.addEventListener('resize', () => { clearTimeout(window._wcResize); window._wcResize = setTimeout(updateWordCloud, 200); });
 </script>
 
 </body>
