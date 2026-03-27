@@ -1049,6 +1049,35 @@
             transform: translateY(0);
         }
 
+        /* Admin button */
+        .admin-btn {
+            padding: 8px 18px;
+            border-radius: 20px;
+            border: 1.5px solid var(--accent-purple);
+            background: rgba(161, 140, 209, 0.06);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent-purple);
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+        }
+        .admin-btn:hover {
+            background: rgba(161, 140, 209, 0.15);
+            box-shadow: 0 2px 12px rgba(161, 140, 209, 0.25);
+            transform: translateY(-1px);
+        }
+        .admin-btn.active {
+            background: linear-gradient(135deg, #ff7e5f, #feb47b);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 16px rgba(255, 126, 95, 0.35);
+        }
+        .admin-btn.active svg {
+            stroke: #fff;
+        }
+
         /* Responsive */
         @media (max-width: 640px) {
             .hero-card { padding: 32px 20px; }
@@ -1093,6 +1122,7 @@
             <div class="guestbook-header">
                 <h2>留言墙</h2>
                 <p>写下你想对zk说的话，留下你的祝福和回忆</p>
+                <button onclick="toggleAdmin()" id="admin-toggle-btn" class="admin-btn" style="margin-top:12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>管理员模式</button>
             </div>
 
             <!-- Message form -->
@@ -1118,7 +1148,6 @@
             <div class="msg-count" id="msg-count"></div>
             <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
                 <span id="storage-mode" style="font-size:12px;color:#999;margin-right:auto;"></span>
-                <button onclick="toggleAdmin()" id="admin-toggle-btn" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">管理员</button>
                 <button onclick="exportMessages()" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">导出留言</button>
                 <button onclick="importMessages()" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">导入留言</button>
             </div>
@@ -1561,13 +1590,15 @@
 function enterApp() {
     const splash = document.getElementById('splash');
     splash.classList.add('fade-out');
-    setTimeout(() => {
+    setTimeout(async () => {
         splash.style.display = 'none';
         const app = document.getElementById('app');
         app.style.display = 'block';
         requestAnimationFrame(() => { app.classList.add('visible'); });
         initRevealObserver();
+        await initMessages();
         renderMessages();
+        updateWordCloud();
     }, 800);
 }
 
@@ -1606,6 +1637,94 @@ const LS_KEY = 'zk_guestbook_messages';
 const LS_TOKEN_KEY = 'zk_owner_token';
 const ADMIN_PASSWORD = 'zk19177admin';
 let isAdmin = false;
+
+// ---- IndexedDB for media storage ----
+const IDB_NAME = 'zk_guestbook_media';
+const IDB_VERSION = 1;
+const IDB_STORE = 'media';
+
+function openMediaDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(IDB_STORE)) {
+                db.createObjectStore(IDB_STORE, { keyPath: 'mediaId' });
+            }
+        };
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+    });
+}
+
+async function saveMediaToDB(mediaId, type, data) {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put({ mediaId, type, data });
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e.target.error);
+    });
+}
+
+async function loadMediaFromDB(mediaId) {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(mediaId);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+
+async function deleteMediaFromDB(mediaId) {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).delete(mediaId);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e.target.error);
+    });
+}
+
+function generateMediaId() {
+    return 'media_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+}
+
+async function hydrateMessageMedia(msgs) {
+    for (const msg of msgs) {
+        if (!msg.media || msg.media.length === 0) continue;
+        for (const m of msg.media) {
+            if (m.data) continue; // already has inline data (legacy or in-memory)
+            if (m.mediaId) {
+                try {
+                    const record = await loadMediaFromDB(m.mediaId);
+                    if (record) m.data = record.data;
+                } catch(e) {
+                    console.warn('Failed to load media', m.mediaId, e);
+                }
+            }
+        }
+    }
+}
+
+async function migrateOldMedia(msgs) {
+    let migrated = false;
+    for (const msg of msgs) {
+        if (!msg.media) continue;
+        for (const m of msg.media) {
+            if (m.data && !m.mediaId) {
+                // Old format: has data but no mediaId -> migrate to IndexedDB
+                m.mediaId = generateMediaId();
+                await saveMediaToDB(m.mediaId, m.type, m.data);
+                migrated = true;
+            }
+        }
+    }
+    if (migrated) {
+        saveToLocal(); // Re-save with references only (strips inline data)
+    }
+}
 
 // Generate or retrieve a unique browser token to identify "self" messages
 function getOwnerToken() {
@@ -1661,14 +1780,14 @@ function compressImage(dataUrl, maxW, quality) {
 // ---- localStorage helpers ----
 function saveToLocal() {
     try {
-        localStorage.setItem(LS_KEY, JSON.stringify(messages));
+        // Strip media data before saving to localStorage - only keep references
+        const stripped = messages.map(m => ({
+            ...m,
+            media: (m.media || []).map(item => ({ type: item.type, mediaId: item.mediaId }))
+        }));
+        localStorage.setItem(LS_KEY, JSON.stringify(stripped));
     } catch(e) {
-        // If quota exceeded, try saving without media
-        console.warn('localStorage save failed, trying without media', e);
-        try {
-            const lite = messages.map(m => ({ ...m, media: [] }));
-            localStorage.setItem(LS_KEY, JSON.stringify(lite));
-        } catch(e2) { console.warn('localStorage save totally failed', e2); }
+        console.warn('localStorage save failed', e);
     }
 }
 
@@ -1683,33 +1802,37 @@ function loadFromLocal() {
     return null;
 }
 
-// Fallback: load from localStorage or use sample data
-if (!firebaseReady) {
-    const saved = loadFromLocal();
-    if (saved) {
-        messages = saved;
-    } else {
-        messages = [
-            {
-                id: 'sample1',
-                name: '菜鸟产品技术部',
-                content: '在宽，感谢你18年来的坚守与付出！从全球化CTO到菜鸟CTO，你用"组合技术的复利"推动了物流科技的边界。简单、极致、贴地、疾飞——这不仅是菜鸟的价值观，更是你的真实写照。祝前程似锦，新的旅途一路坦荡！',
-                media: [],
-                time: Date.now() - 86400000 * 2,
-                color: '#4facfe',
-                ownerToken: '__system__'
-            },
-            {
-                id: 'sample2',
-                name: '一位菜鸟技术同学',
-                content: '宽哥，在你面对面的13期里，你说的那句"敢想敢试，别怕错"一直激励着我。谢谢你为我们创造了这么好的技术氛围。江湖再见！',
-                media: [],
-                time: Date.now() - 86400000,
-                color: '#43e97b',
-                ownerToken: '__system__'
-            }
-        ];
-        saveToLocal();
+// Async init: load from localStorage, migrate old media, hydrate from IndexedDB
+async function initMessages() {
+    if (!firebaseReady) {
+        const saved = loadFromLocal();
+        if (saved) {
+            messages = saved;
+            await migrateOldMedia(messages);    // one-time migration of inline base64 to IndexedDB
+            await hydrateMessageMedia(messages); // load media data from IndexedDB for rendering
+        } else {
+            messages = [
+                {
+                    id: 'sample1',
+                    name: '菜鸟产品技术部',
+                    content: '在宽，感谢你18年来的坚守与付出！从全球化CTO到菜鸟CTO，你用"组合技术的复利"推动了物流科技的边界。简单、极致、贴地、疾飞——这不仅是菜鸟的价值观，更是你的真实写照。祝前程似锦，新的旅途一路坦荡！',
+                    media: [],
+                    time: Date.now() - 86400000 * 2,
+                    color: '#4facfe',
+                    ownerToken: '__system__'
+                },
+                {
+                    id: 'sample2',
+                    name: '一位菜鸟技术同学',
+                    content: '宽哥，在你面对面的13期里，你说的那句"敢想敢试，别怕错"一直激励着我。谢谢你为我们创造了这么好的技术氛围。江湖再见！',
+                    media: [],
+                    time: Date.now() - 86400000,
+                    color: '#43e97b',
+                    ownerToken: '__system__'
+                }
+            ];
+            saveToLocal();
+        }
     }
 }
 
@@ -1766,7 +1889,7 @@ function removeFile(idx) {
     renderPreviews();
 }
 
-function submitMessage() {
+async function submitMessage() {
     const nameEl = document.getElementById('msg-name');
     const contentEl = document.getElementById('msg-content');
     const name = nameEl.value.trim();
@@ -1785,11 +1908,22 @@ function submitMessage() {
         return;
     }
 
+    // Save each media item to IndexedDB and build media array with references
+    const mediaItems = [];
+    for (const f of uploadedFiles) {
+        const mediaId = f.mediaId || generateMediaId();
+        if (!f.mediaId) {
+            // Only save to IDB if it's a new file (no existing mediaId)
+            await saveMediaToDB(mediaId, f.type, f.data);
+        }
+        mediaItems.push({ type: f.type, mediaId: mediaId, data: f.data });
+    }
+
     const msg = {
         id: editingId || ('msg_' + Date.now() + '_' + Math.random().toString(36).substr(2,6)),
         name: name,
         content: content,
-        media: uploadedFiles.map(f => ({ type: f.type, data: f.data })),
+        media: mediaItems,
         time: editingId ? messages.find(m=>m.id===editingId)?.time || Date.now() : Date.now(),
         color: getAvatarColor(name),
         editedAt: editingId ? Date.now() : null,
@@ -1808,7 +1942,7 @@ function submitMessage() {
     if (firebaseReady && db) {
         db.collection('messages').doc(msg.id).set(msg).catch(e => console.error(e));
     }
-    // Always persist to localStorage as fallback
+    // Always persist to localStorage as fallback (media data stripped automatically)
     saveToLocal();
 
     nameEl.value = '';
@@ -1830,16 +1964,24 @@ function editMessage(id) {
     editingId = id;
     document.getElementById('msg-name').value = msg.name;
     document.getElementById('msg-content').value = msg.content;
-    uploadedFiles = (msg.media || []).map(m => ({ type: m.type, data: m.data, name: '' }));
+    uploadedFiles = (msg.media || []).map(m => ({ type: m.type, data: m.data, mediaId: m.mediaId, name: '' }));
     renderPreviews();
     document.getElementById('msg-form').scrollIntoView({ behavior: 'smooth' });
     document.getElementById('msg-submit').textContent = '更新留言';
 }
 
-function deleteMessage(id) {
+async function deleteMessage(id) {
     const msg = messages.find(m => m.id === id);
     if (!msg || !canEditMessage(msg)) return;
     if (!confirm('确定要删除这条留言吗？')) return;
+
+    // Clean up IndexedDB media
+    for (const m of (msg.media || [])) {
+        if (m.mediaId) {
+            deleteMediaFromDB(m.mediaId).catch(e => console.warn('Failed to delete media', e));
+        }
+    }
+
     messages = messages.filter(m => m.id !== id);
     if (firebaseReady && db) {
         db.collection('messages').doc(id).delete().catch(e => console.error(e));
@@ -1850,20 +1992,21 @@ function deleteMessage(id) {
 }
 
 function toggleAdmin() {
+    const lockIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
     if (isAdmin) {
         isAdmin = false;
-        document.getElementById('admin-toggle-btn').textContent = '管理员';
-        document.getElementById('admin-toggle-btn').style.color = '#666';
-        document.getElementById('admin-toggle-btn').style.borderColor = '#ddd';
+        const btn = document.getElementById('admin-toggle-btn');
+        btn.innerHTML = lockIcon + '管理员';
+        btn.classList.remove('active');
         renderMessages();
         return;
     }
     const pw = prompt('请输入管理员密码：');
     if (pw === ADMIN_PASSWORD) {
         isAdmin = true;
-        document.getElementById('admin-toggle-btn').textContent = '退出管理';
-        document.getElementById('admin-toggle-btn').style.color = '#ff7e5f';
-        document.getElementById('admin-toggle-btn').style.borderColor = '#ff7e5f';
+        const btn = document.getElementById('admin-toggle-btn');
+        btn.innerHTML = lockIcon + '退出管理';
+        btn.classList.add('active');
         renderMessages();
     } else if (pw !== null) {
         alert('密码错误');
@@ -1871,7 +2014,9 @@ function toggleAdmin() {
 }
 
 // ---- Export / Import ----
-function exportMessages() {
+async function exportMessages() {
+    // Ensure all media data is present for export
+    await hydrateMessageMedia(messages);
     const data = JSON.stringify(messages, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1890,21 +2035,31 @@ function importMessages() {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (ev) => {
+        reader.onload = async (ev) => {
             try {
                 const imported = JSON.parse(ev.target.result);
                 if (!Array.isArray(imported)) { alert('格式无效'); return; }
                 const existIds = new Set(messages.map(m => m.id));
                 let added = 0;
-                imported.forEach(m => {
+                for (const m of imported) {
                     if (!existIds.has(m.id)) {
+                        // Save imported media to IndexedDB and convert to reference format
+                        if (m.media && m.media.length > 0) {
+                            for (const item of m.media) {
+                                if (item.data && !item.mediaId) {
+                                    item.mediaId = generateMediaId();
+                                    await saveMediaToDB(item.mediaId, item.type, item.data);
+                                }
+                            }
+                        }
                         messages.push(m);
                         added++;
                     }
-                });
+                }
                 messages.sort((a, b) => (b.time || 0) - (a.time || 0));
                 saveToLocal();
                 renderMessages();
+                updateWordCloud();
                 alert('成功导入 ' + added + ' 条新留言！');
             } catch(err) {
                 alert('导入失败: ' + err.message);
@@ -1933,7 +2088,7 @@ function renderMessages() {
     container.innerHTML = messages.map(msg => {
         const initial = msg.name.charAt(0);
         const color = msg.color || getAvatarColor(msg.name);
-        const mediaHtml = (msg.media || []).map(m => {
+        const mediaHtml = (msg.media || []).filter(m => m.data).map(m => {
             if (m.type === 'image') return `<img src="${m.data}" onclick="openLightbox('${m.data.replace(/'/g, "\\'")}')" alt="">`;
             return `<video src="${m.data}" controls></video>`;
         }).join('');
