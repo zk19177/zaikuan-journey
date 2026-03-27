@@ -1078,6 +1078,34 @@
             stroke: #fff;
         }
 
+        /* Admin button - corner position, subtle */
+        .admin-btn-corner {
+            margin-left: auto;
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.1);
+            background: transparent;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--text-light);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+        }
+        .admin-btn-corner:hover {
+            color: var(--text-secondary);
+            border-color: rgba(0,0,0,0.2);
+        }
+        .admin-btn-corner.active {
+            background: var(--accent-orange);
+            color: #fff;
+            border-color: transparent;
+        }
+        .admin-btn-corner.active svg {
+            stroke: #fff;
+        }
+
         /* Responsive */
         @media (max-width: 640px) {
             .hero-card { padding: 32px 20px; }
@@ -1113,6 +1141,7 @@
             <div class="tab-logo">ZK's World</div>
             <button class="tab-btn active" id="tab-guestbook" onclick="switchTab('guestbook')">留言墙</button>
             <button class="tab-btn" id="tab-journey" onclick="switchTab('journey')">18岁的少年zk</button>
+            <button onclick="toggleAdmin()" id="admin-toggle-btn" class="admin-btn-corner"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>管理</button>
         </div>
     </nav>
 
@@ -1122,7 +1151,6 @@
             <div class="guestbook-header">
                 <h2>留言墙</h2>
                 <p>写下你想对zk说的话，留下你的祝福和回忆</p>
-                <button onclick="toggleAdmin()" id="admin-toggle-btn" class="admin-btn" style="margin-top:12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>管理员模式</button>
             </div>
 
             <!-- Message form -->
