@@ -1967,31 +1967,62 @@ function formatTime(ts) {
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
-function handleFileUpload(event, type) {
+async function uploadToImgur(base64Data) {
+    // Remove data:image/xxx;base64, prefix
+    const base64 = base64Data.split(',')[1];
+    try {
+        const resp = await fetch('https://api.imgur.com/3/image', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Client-ID 546c25a59c58ad7',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ image: base64, type: 'base64' })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            return data.data.link;
+        }
+        throw new Error(data.data?.error || 'Upload failed');
+    } catch (e) {
+        console.error('Imgur upload failed:', e);
+        return null;
+    }
+}
+
+async function handleFileUpload(event, type) {
     const files = Array.from(event.target.files);
-    files.forEach(file => {
-        if (uploadedFiles.length >= 6) return;
+    for (const file of files) {
+        if (uploadedFiles.length >= 6) break;
+        if (type !== 'image') continue; // Only support images now
+        
         const reader = new FileReader();
         reader.onload = async (e) => {
             let data = e.target.result;
-            // Compress images to fit in localStorage (~200KB max per image)
-            if (type === 'image') {
-                data = await compressImage(data, 800, 0.6);
+            // Compress images
+            data = await compressImage(data, 800, 0.6);
+            
+            // Upload to Imgur
+            const url = await uploadToImgur(data);
+            if (url) {
+                uploadedFiles.push({ type, url, name: file.name });
+                renderPreviews();
+            } else {
+                alert('图片上传失败，请重试');
             }
-            uploadedFiles.push({ type, data, name: file.name });
-            renderPreviews();
         };
         reader.readAsDataURL(file);
-    });
+    }
     event.target.value = '';
 }
 
 function renderPreviews() {
     const container = document.getElementById('msg-preview');
     container.innerHTML = uploadedFiles.map((f, i) => {
+        const src = f.url || f.data;
         const el = f.type === 'image'
-            ? `<img src="${f.data}" alt="${f.name}">`
-            : `<video src="${f.data}" muted></video>`;
+            ? `<img src="${src}" alt="${f.name}">`
+            : `<video src="${src}" muted></video>`;
         return `<div class="msg-preview-item">${el}<button class="remove-btn" onclick="removeFile(${i})">×</button></div>`;
     }).join('');
 }
@@ -2020,16 +2051,11 @@ async function submitMessage() {
         return;
     }
 
-    // Save each media item to IndexedDB and build media array with references
-    const mediaItems = [];
-    for (const f of uploadedFiles) {
-        const mediaId = f.mediaId || generateMediaId();
-        if (!f.mediaId) {
-            // Only save to IDB if it's a new file (no existing mediaId)
-            await saveMediaToDB(mediaId, f.type, f.data);
-        }
-        mediaItems.push({ type: f.type, mediaId: mediaId, data: f.data });
-    }
+    // Build media array - images now use external URL (Imgur), no need for IndexedDB
+    const mediaItems = uploadedFiles.map(f => ({
+        type: f.type,
+        url: f.url || f.data // Use Imgur URL if available, otherwise fallback to data
+    }));
 
     const msg = {
         id: editingId || ('msg_' + Date.now() + '_' + Math.random().toString(36).substr(2,6)),
@@ -2050,13 +2076,9 @@ async function submitMessage() {
         messages.unshift(msg);
     }
 
-    // Save to Firebase if available (strip media data for large files to avoid quota limits)
+    // Save to Firebase - media now contains URLs (Imgur), safe to save directly
     if (firebaseReady && db) {
-        const msgForFirebase = {
-            ...msg,
-            media: msg.media.map(m => ({ type: m.type, mediaId: m.mediaId })) // strip data, keep only references
-        };
-        db.collection('messages').doc(msg.id).set(msgForFirebase).catch(e => console.error(e));
+        db.collection('messages').doc(msg.id).set(msg).catch(e => console.error(e));
     }
     // Always persist to localStorage as fallback (media data stripped automatically)
     saveToLocal();
@@ -2204,9 +2226,10 @@ function renderMessages() {
     container.innerHTML = messages.map(msg => {
         const initial = msg.name.charAt(0);
         const color = msg.color || getAvatarColor(msg.name);
-        const mediaHtml = (msg.media || []).filter(m => m.data).map(m => {
-            if (m.type === 'image') return `<img src="${m.data}" onclick="openLightbox('${m.data.replace(/'/g, "\\'")}')" alt="">`;
-            return `<video src="${m.data}" controls></video>`;
+        const mediaHtml = (msg.media || []).filter(m => m.url || m.data).map(m => {
+            const src = m.url || m.data;
+            if (m.type === 'image') return `<img src="${src}" onclick="openLightbox('${src.replace(/'/g, "\\'")}')" alt="">`;
+            return `<video src="${src}" controls></video>`;
         }).join('');
         const canEdit = canEditMessage(msg);
         const actionsHtml = canEdit ? `
@@ -2247,18 +2270,9 @@ function closeLightbox() {
 // Load from Firebase
 async function loadMessagesFromFirebase() {
     if (!db) return;
-    db.collection('messages').orderBy('time', 'desc').onSnapshot(async snapshot => {
+    db.collection('messages').orderBy('time', 'desc').onSnapshot(snapshot => {
         messages = snapshot.docs.map(doc => doc.data());
-        // Hydrate media data from IndexedDB for messages with media references
-        for (const msg of messages) {
-            if (msg.media && msg.media.length > 0) {
-                for (const m of msg.media) {
-                    if (m.mediaId && !m.data) {
-                        m.data = await loadMediaFromDB(m.mediaId);
-                    }
-                }
-            }
-        }
+        // Media now uses external URLs (Imgur), no need to hydrate from IndexedDB
         renderMessages();
     });
 }
