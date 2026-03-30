@@ -2053,9 +2053,13 @@ async function submitMessage() {
         messages.unshift(msg);
     }
 
-    // Save to Firebase if available
+    // Save to Firebase if available (strip media data for large files to avoid quota limits)
     if (firebaseReady && db) {
-        db.collection('messages').doc(msg.id).set(msg).catch(e => console.error(e));
+        const msgForFirebase = {
+            ...msg,
+            media: msg.media.map(m => ({ type: m.type, mediaId: m.mediaId })) // strip data, keep only references
+        };
+        db.collection('messages').doc(msg.id).set(msgForFirebase).catch(e => console.error(e));
     }
     // Always persist to localStorage as fallback (media data stripped automatically)
     saveToLocal();
@@ -2244,10 +2248,20 @@ function closeLightbox() {
 }
 
 // Load from Firebase
-function loadMessagesFromFirebase() {
+async function loadMessagesFromFirebase() {
     if (!db) return;
-    db.collection('messages').orderBy('time', 'desc').onSnapshot(snapshot => {
+    db.collection('messages').orderBy('time', 'desc').onSnapshot(async snapshot => {
         messages = snapshot.docs.map(doc => doc.data());
+        // Hydrate media data from IndexedDB for messages with media references
+        for (const msg of messages) {
+            if (msg.media && msg.media.length > 0) {
+                for (const m of msg.media) {
+                    if (m.mediaId && !m.data) {
+                        m.data = await loadMediaFromDB(m.mediaId);
+                    }
+                }
+            }
+        }
         renderMessages();
     });
 }
