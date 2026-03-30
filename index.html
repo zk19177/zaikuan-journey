@@ -1968,50 +1968,33 @@ function formatTime(ts) {
 }
 
 async function uploadToImageHost(base64Data) {
-    // Try multiple image hosting services
-    const base64 = base64Data.split(',')[1];
-    
-    // Try imgbb.com first (more reliable in China)
-    try {
-        const formData = new FormData();
-        formData.append('image', base64);
-        
-        const resp = await fetch('https://api.imgbb.com/1/upload?key=5b4b8e5f8b0e5f8b0e5f8b0e5f8b0e5f8b0', {
-            method: 'POST',
-            body: formData
-        });
-        const data = await resp.json();
-        if (data.success) {
-            return data.data.url;
-        }
-    } catch (e) {
-        console.log('imgbb failed:', e);
-    }
-    
-    // Fallback: use data URL directly (stored in Firebase, may be slow but works)
-    console.log('Using data URL fallback');
+    // For now, use data URL directly - stored in Firebase
+    // This ensures reliability though may be slower for large images
+    // Images are compressed to ~200KB max, which is acceptable
     return base64Data;
 }
 
 async function handleFileUpload(event, type) {
     const files = Array.from(event.target.files);
     for (const file of files) {
-        if (uploadedFiles.length >= 6) break;
-        if (type !== 'image') continue; // Only support images now
+        if (uploadedFiles.length >= 3) { // Max 3 images
+            alert('最多只能上传3张图片');
+            break;
+        }
+        if (type !== 'image') continue;
         
         const reader = new FileReader();
         reader.onload = async (e) => {
             let data = e.target.result;
-            // Compress images
-            data = await compressImage(data, 800, 0.6);
+            // Compress images to ~100KB (smaller for Firebase)
+            data = await compressImage(data, 600, 0.5);
             
-            // Upload to image host
             const url = await uploadToImageHost(data);
             if (url) {
                 uploadedFiles.push({ type, url, name: file.name });
                 renderPreviews();
             } else {
-                alert('图片上传失败，请重试');
+                alert('图片处理失败，请重试');
             }
         };
         reader.readAsDataURL(file);
