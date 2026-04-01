@@ -4,25 +4,110 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hello ZK's World</title>
-    <meta http-equiv="refresh" content="0;url=https://zaikuan-journey.netlify.app">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #0d1117; color: #ffffff; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
-        .container { text-align: center; padding: 40px; }
-        h1 { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        p { font-size: 16px; color: #b2bec3; margin-bottom: 24px; }
-        a { display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: #fff; text-decoration: none; border-radius: 30px; font-size: 16px; font-weight: 600; }
-        .note { margin-top: 20px; font-size: 13px; color: #636e72; }
+        body {
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0d1117 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+        }
+        .container { text-align: center; padding: 40px; max-width: 480px; }
+        h1 {
+            font-size: 28px; margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .subtitle { font-size: 15px; color: #b2bec3; margin-bottom: 28px; }
+        .status {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 24px; border-radius: 24px;
+            background: rgba(255,255,255,0.06); backdrop-filter: blur(8px);
+            font-size: 14px; color: #dfe6e9;
+        }
+        .spinner {
+            width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: #4facfe; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .links {
+            margin-top: 24px; display: flex; flex-direction: column; gap: 10px;
+            opacity: 0; transition: opacity 0.4s;
+        }
+        .links.show { opacity: 1; }
+        .links a {
+            display: block; padding: 14px 28px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #fff; text-decoration: none; border-radius: 30px;
+            font-size: 15px; font-weight: 600; transition: transform 0.2s;
+        }
+        .links a:active { transform: scale(0.97); }
+        .links a.alt {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .note { margin-top: 20px; font-size: 12px; color: #636e72; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Hello ZK's World</h1>
-        <p>心如自在，天地宽</p>
-        <p>页面正在跳转中...</p>
-        <a href="https://zaikuan-journey.netlify.app">点击这里前往页面</a>
-        <p class="note">如果没有自动跳转，请点击上方按钮</p>
+        <p class="subtitle">心如自在，天地宽</p>
+        <div class="status" id="status">
+            <div class="spinner"></div>
+            <span>正在为你选择最快的线路...</span>
+        </div>
+        <div class="links" id="links">
+            <a href="https://zaikuan-journey.pages.dev" id="link-cf">进入页面 (线路1)</a>
+            <a href="https://zaikuan-journey.netlify.app" id="link-nl" class="alt">备用线路 (线路2)</a>
+        </div>
+        <p class="note" id="note"></p>
     </div>
-    <script>window.location.href='https://zaikuan-journey.netlify.app';</script>
+    <script>
+    (function() {
+        var CF = 'https://zaikuan-journey.pages.dev';
+        var NL = 'https://zaikuan-journey.netlify.app';
+        var done = false;
+
+        function go(url) {
+            if (done) return;
+            done = true;
+            window.location.href = url;
+        }
+
+        function probe(url) {
+            return new Promise(function(resolve) {
+                var img = new Image();
+                var t = Date.now();
+                img.onload = function() { resolve({ url: url, time: Date.now() - t }); };
+                img.onerror = function() { resolve(null); };
+                img.src = url + '/avatar.gif?_t=' + Date.now();
+                setTimeout(function() { resolve(null); }, 5000);
+            });
+        }
+
+        Promise.all([probe(CF), probe(NL)]).then(function(results) {
+            var ok = results.filter(function(r) { return r !== null; });
+            if (ok.length > 0) {
+                ok.sort(function(a, b) { return a.time - b.time; });
+                go(ok[0].url);
+            } else {
+                showLinks();
+            }
+        });
+
+        setTimeout(function() { if (!done) go(CF); }, 4000);
+        setTimeout(function() { if (!done) showLinks(); }, 7000);
+
+        function showLinks() {
+            done = true;
+            document.getElementById('status').innerHTML = '<span>自动跳转未成功，请手动选择：</span>';
+            document.getElementById('links').classList.add('show');
+            document.getElementById('note').textContent = '如果某条线路无法打开，请尝试另一条';
+        }
+    })();
+    </script>
 </body>
-    </html>
+</html>
