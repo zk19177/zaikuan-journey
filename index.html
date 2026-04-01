@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hello ZK's World</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <!-- Fonts: Chinese CDN mirror (accessible in China, unlike Google Fonts) -->
+    <link href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet" crossorigin>
+    <!-- Firebase SDK removed: was render-blocking in China (gstatic.com blocked), and API key was dummy -->
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Noto Sans SC', 'Outfit', sans-serif; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Noto Sans SC', 'Outfit', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif; }
 
         /* ========== COLOR THEME: Bright, Vibrant, Positive ========== */
         :root {
@@ -1177,6 +1176,7 @@
             <div class="msg-count" id="msg-count"></div>
             <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
                 <span id="storage-mode" style="font-size:12px;color:#999;margin-right:auto;"></span>
+                <button onclick="syncFromGitee()" style="padding:6px 14px;border-radius:20px;border:1px solid #4facfe;background:#fff;cursor:pointer;font-size:12px;color:#4facfe;transition:all .2s;">🔄 同步云端</button>
                 <button onclick="exportMessages()" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">导出留言</button>
                 <button onclick="importMessages()" style="padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;color:#666;transition:all .2s;">导入留言</button>
             </div>
@@ -1735,8 +1735,8 @@ function initRevealObserver() {
 let messages = [];
 let uploadedFiles = [];
 let editingId = null;
-let db = null;
-let firebaseReady = false;
+let db = null; // Used only for IndexedDB media storage
+let firebaseReady = false; // Firebase removed - always false
 const LS_KEY = 'zk_guestbook_messages';
 const LS_TOKEN_KEY = 'zk_owner_token';
 const SAMPLE_VERSION = 'v3';
@@ -1843,26 +1843,140 @@ function getOwnerToken() {
 }
 const MY_TOKEN = getOwnerToken();
 
-// Firebase config - replace with real values to enable cloud sync
-const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyA0o8JgVImHyAbrV7vkjgh8dMNMiDqkwnA",
-    authDomain: "zk-guestbook-sync.firebaseapp.com",
-    projectId: "zk-guestbook-sync",
-    storageBucket: "zk-guestbook-sync.firebasestorage.app",
-    messagingSenderId: "654943738664",
-    appId: "1:654943738664:web:f0951bc503831fdf940e1d"
-};
+// Gitee Issues API for message storage (stable in China)
+const GITEE_REPO = 'bulipaul/zks-world';
+const GITEE_TOKEN = '10ca4ce9ed0229aad7fcb1f3f0c2fcd5';
 
-// Try to init Firebase
-try {
-    if (typeof firebase !== 'undefined' && FIREBASE_CONFIG.apiKey !== "AIzaSyDummyKeyForNow") {
-        firebase.initializeApp(FIREBASE_CONFIG);
-        db = firebase.firestore();
-        firebaseReady = true;
-        loadMessagesFromFirebase();
+// Load messages from Gitee Issues
+async function loadMessagesFromGitee() {
+    try {
+        const resp = await fetch(`https://gitee.com/api/v5/repos/${GITEE_REPO}/issues?state=open&labels=guestbook`, {
+            headers: { 
+                'Accept': 'application/json',
+                'Authorization': `token ${GITEE_TOKEN}`
+            }
+        });
+        if (!resp.ok) throw new Error('Gitee API failed');
+        const issues = await resp.json();
+        return issues.map(issue => {
+            try {
+                const body = issue.body || '{}';
+                const data = JSON.parse(body);
+                return {
+                    id: 'msg_' + issue.number,
+                    name: data.name || issue.user?.login || '匿名',
+                    content: data.content || '',
+                    media: data.media || [],
+                    time: new Date(issue.created_at).getTime(),
+                    color: data.color || '#4facfe',
+                    ownerToken: data.ownerToken || '__gitee__',
+                    issueNumber: issue.number
+                };
+            } catch(e) {
+                return {
+                    id: 'msg_' + issue.number,
+                    name: issue.user?.login || '匿名',
+                    content: issue.body || '',
+                    media: [],
+                    time: new Date(issue.created_at).getTime(),
+                    color: '#4facfe',
+                    ownerToken: '__gitee__',
+                    issueNumber: issue.number
+                };
+            }
+        });
+    } catch(e) {
+        console.log('Gitee load failed:', e);
+        return null;
     }
-} catch(e) {
-    console.log('Firebase not configured yet, using local mode');
+}
+
+// Save message to Gitee Issues
+async function saveMessageToGitee(msg) {
+    try {
+        const issueData = {
+            title: `留言: ${msg.name}`,
+            body: JSON.stringify({
+                name: msg.name,
+                content: msg.content,
+                media: msg.media,
+                color: msg.color,
+                ownerToken: msg.ownerToken
+            }),
+            labels: ['guestbook']
+        };
+        
+        const resp = await fetch(`https://gitee.com/api/v5/repos/${GITEE_REPO}/issues`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `token ${GITEE_TOKEN}`
+            },
+            body: JSON.stringify(issueData)
+        });
+        
+        if (!resp.ok) throw new Error('Failed to create issue');
+        const issue = await resp.json();
+        return issue.number;
+    } catch(e) {
+        console.log('Gitee save failed:', e);
+        return null;
+    }
+}
+
+// Delete message from Gitee Issues
+async function deleteMessageFromGitee(issueNumber) {
+    if (!issueNumber) return false;
+    try {
+        const resp = await fetch(`https://gitee.com/api/v5/repos/${GITEE_REPO}/issues/${issueNumber}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `token ${GITEE_TOKEN}`
+            },
+            body: JSON.stringify({ state: 'closed' })
+        });
+        return resp.ok;
+    } catch(e) {
+        console.log('Gitee delete failed:', e);
+        return false;
+    }
+}
+
+// Manual sync from Gitee
+async function syncFromGitee() {
+    const btn = document.querySelector('button[onclick="syncFromGitee()"]');
+    const originalText = btn.textContent;
+    btn.textContent = '🔄 同步中...';
+    btn.disabled = true;
+    
+    try {
+        const giteeMessages = await loadMessagesFromGitee();
+        if (giteeMessages && giteeMessages.length > 0) {
+            // Merge with local messages - avoid duplicates
+            const existingIds = new Set(messages.map(m => m.id));
+            const newMessages = giteeMessages.filter(m => !existingIds.has(m.id));
+            
+            if (newMessages.length > 0) {
+                messages = [...messages, ...newMessages];
+                messages.sort((a, b) => (b.time || 0) - (a.time || 0));
+                saveToLocal();
+                renderMessages();
+                updateWordCloud();
+                alert(`同步成功！新增 ${newMessages.length} 条留言`);
+            } else {
+                alert('已是最新，没有新留言');
+            }
+        } else {
+            alert('同步完成，云端暂无留言');
+        }
+    } catch(e) {
+        console.error('Sync failed:', e);
+        alert('同步失败，请检查网络连接');
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
 }
 
 // ---- Image compression helper ----
@@ -1908,43 +2022,70 @@ function loadFromLocal() {
     return null;
 }
 
-// Async init: load from localStorage, migrate old media, hydrate from IndexedDB
+// Async init: ALWAYS load from local first (ensure data never lost), then try to sync with Gitee
 async function initMessages() {
-    if (!firebaseReady) {
-        const savedVer = localStorage.getItem(LS_SAMPLE_VER_KEY);
-        const saved = loadFromLocal();
-        if (saved && savedVer === SAMPLE_VERSION) {
-            messages = saved;
-            await migrateOldMedia(messages);    // one-time migration of inline base64 to IndexedDB
-            await hydrateMessageMedia(messages); // load media data from IndexedDB for rendering
-        } else {
-            // Keep user-submitted messages, refresh sample messages
-            const userMessages = saved ? saved.filter(m => !m.id.startsWith('sample')) : [];
-            messages = [
-                ...userMessages,
-                {
-                    id: 'sample1',
-                    name: '菜鸟产品技术部',
-                    content: '在宽，感谢你18年来的坚守与付出！从全球化CTO到菜鸟CTO，你用"组合技术的复利"推动了物流科技的边界。这不仅是菜鸟的价值观，更是你的真实写照。祝前程似锦，新的旅途一路坦荡！',
-                    media: [],
-                    time: Date.now() - 86400000 * 2,
-                    color: '#4facfe',
-                    ownerToken: '__system__'
-                },
-                {
-                    id: 'sample2',
-                    name: '一位菜鸟技术同学',
-                    content: '宽哥，在你面对面的13期里，你说的那句"敢想敢试，别怕错"一直激励着我。谢谢你为我们创造了这么好的技术氛围。江湖再见！',
-                    media: [],
-                    time: Date.now() - 86400000,
-                    color: '#43e97b',
-                    ownerToken: '__system__'
-                }
-            ];
-            localStorage.setItem(LS_SAMPLE_VER_KEY, SAMPLE_VERSION);
-            saveToLocal();
-            await hydrateMessageMedia(messages);
+    // STEP 1: Always load from localStorage first (ensure messages are never lost)
+    const saved = loadFromLocal();
+    const savedVer = localStorage.getItem(LS_SAMPLE_VER_KEY);
+    
+    if (saved && saved.length > 0) {
+        // Use local data immediately - this ensures messages are always visible
+        messages = saved;
+        await migrateOldMedia(messages);
+        await hydrateMessageMedia(messages);
+        renderMessages();
+        updateWordCloud();
+    } else if (savedVer === SAMPLE_VERSION) {
+        // Has version but no messages (should not happen, but handle it)
+        messages = [];
+        renderMessages();
+    } else {
+        // First time - use sample messages
+        messages = [
+            {
+                id: 'sample1',
+                name: '菜鸟产品技术部',
+                content: '在宽，感谢你18年来的坚守与付出！从全球化CTO到菜鸟CTO，你用"组合技术的复利"推动了物流科技的边界。这不仅是菜鸟的价值观，更是你的真实写照。祝前程似锦，新的旅途一路坦荡！',
+                media: [],
+                time: Date.now() - 86400000 * 2,
+                color: '#4facfe',
+                ownerToken: '__system__'
+            },
+            {
+                id: 'sample2',
+                name: '一位菜鸟技术同学',
+                content: '宽哥，在你面对面的13期里，你说的那句"敢想敢试，别怕错"一直激励着我。谢谢你为我们创造了这么好的技术氛围。江湖再见！',
+                media: [],
+                time: Date.now() - 86400000,
+                color: '#43e97b',
+                ownerToken: '__system__'
+            }
+        ];
+        localStorage.setItem(LS_SAMPLE_VER_KEY, SAMPLE_VERSION);
+        saveToLocal();
+        renderMessages();
+        updateWordCloud();
+    }
+    
+    // STEP 2: Try to sync with Gitee in background (don't block display)
+    try {
+        const giteeMessages = await loadMessagesFromGitee();
+        if (giteeMessages && giteeMessages.length > 0) {
+            // Merge Gitee messages with local (avoid duplicates)
+            const localIds = new Set(messages.map(m => m.id));
+            const newMessages = giteeMessages.filter(m => !localIds.has(m.id));
+            
+            if (newMessages.length > 0) {
+                messages = [...messages, ...newMessages];
+                messages.sort((a, b) => (b.time || 0) - (a.time || 0));
+                saveToLocal();
+                renderMessages();
+                updateWordCloud();
+            }
         }
+    } catch(e) {
+        console.log('Gitee sync failed (non-blocking):', e);
+        // Silent fail - local data is already displayed
     }
 }
 
@@ -2037,10 +2178,10 @@ async function submitMessage() {
         return;
     }
 
-    // Build media array - images now use external URL (Imgur), no need for IndexedDB
+    // Build media array - images stored as base64 in Gitee
     const mediaItems = uploadedFiles.map(f => ({
         type: f.type,
-        url: f.url || f.data // Use Imgur URL if available, otherwise fallback to data
+        url: f.url || f.data // Use data URL directly for Gitee storage
     }));
 
     const msg = {
@@ -2062,12 +2203,16 @@ async function submitMessage() {
         messages.unshift(msg);
     }
 
-    // Save to Firebase - media now contains URLs (Imgur), safe to save directly
-    if (firebaseReady && db) {
-        db.collection('messages').doc(msg.id).set(msg).catch(e => console.error(e));
-    }
-    // Always persist to localStorage as fallback (media data stripped automatically)
+    // Always save to localStorage first (ensure data never lost)
     saveToLocal();
+    
+    // Save to Gitee for cross-device sync
+    const issueNumber = await saveMessageToGitee(msg);
+    if (issueNumber) {
+        msg.issueNumber = issueNumber;
+        // Update local storage with issue number
+        saveToLocal();
+    }
 
     nameEl.value = '';
     contentEl.value = '';
@@ -2107,9 +2252,12 @@ async function deleteMessage(id) {
     }
 
     messages = messages.filter(m => m.id !== id);
-    if (firebaseReady && db) {
-        db.collection('messages').doc(id).delete().catch(e => console.error(e));
+    
+    // Delete from Gitee if it has an issue number
+    if (msg.issueNumber) {
+        await deleteMessageFromGitee(msg.issueNumber);
     }
+    
     saveToLocal();
     renderMessages();
     updateWordCloud();
@@ -2253,15 +2401,8 @@ function closeLightbox() {
     document.getElementById('lightbox').classList.remove('active');
 }
 
-// Load from Firebase
-async function loadMessagesFromFirebase() {
-    if (!db) return;
-    db.collection('messages').orderBy('time', 'desc').onSnapshot(snapshot => {
-        messages = snapshot.docs.map(doc => doc.data());
-        // Media now uses external URLs (Imgur), no need to hydrate from IndexedDB
-        renderMessages();
-    });
-}
+// Firebase removed - was blocked in China (gstatic.com inaccessible)
+// All cloud sync now handled by Gitee Issues API
 
 // ============ FORUM DATA & LOGIC ============
 const FORUM_POSTS = [{"title": "菜鸟无人车相关讨论", "content": "这个是我们的柜子车", "author": "李强(在宽)", "time": "2025-06-27", "url": "https://www.aliway.com/detail?id=175e579b7c8547f88bfd1b8b1a817e05", "platform": "alinei"}, {"title": "感谢大家对菜鸟无人车的支持", "content": "感谢大家对菜鸟无人车的支持！也非常欢迎集团的兄弟姐妹帮我们多多推荐客户过来！", "author": "李强(在宽)", "time": "2025-06-27", "url": "https://www.aliway.com/detail?id=175e579b7c8547f88bfd1b8b1a817e05", "platform": "alinei"}, {"title": "对话菜鸟CTO李强：无人车还要经历三个阶段的竞争，未来会升级成载货机器人", "content": "在宽分享了无人车在复杂场景的部署经验，提出行业将经历技术突破、方案优化、共享车队三阶段。菜鸟已交付数百台GT系列无人车，并在开发GT FLEXI新车型。", "author": "每日经济新闻", "time": "2025-05-20", "url": "https://www.nbd.com.cn/articles/2025-05-20/3881298.html", "platform": "news"}, {"title": "菜鸟CTO分享「AI+物流」助力快递网点降本30%", "content": "在宽介绍了AI自动驾驶在中国物流中的应用，自研算法让无人车在复杂路况下运行。菜鸟\"AI+物流\"方案已帮助快递网点降本30%，L4级无人车部署覆盖30+区域。", "author": "搜狐科技 / 鞭牛士", "time": "2025-03-07", "url": "https://www.sohu.com/a/868042274_115060", "platform": "news"}, {"title": "是时候让你的价值被看见、被使用、被传承了【含万霖视频】", "content": "嘿，亲爱的菜鸟小伙伴们～ 你们可能没注意到，但在大家一点一滴的努力下，我们的知识库已经悄悄完成了一次华丽转身——从有文档就行，升级到了好文档才够！来看看万霖和在宽怎么说", "author": "菜鸟产品技术部", "time": "2025-03-02", "url": "", "platform": "jizha"}, {"title": "菜鸟CTO李强：着眼全球市场，加快菜鸟物流技术商业化进程", "content": "在宽阐述了菜鸟2025年战略方向，聚焦全球物流扩展和技术商业化。重点包括强化国际物流网络、AI驱动仓储自动化和智能路由，以及L4无人配送车规模化。", "author": "红星新闻 / 成都商报", "time": "2025-02-21", "url": "https://static.cdsb.com/micropub/Articles/202502/c23430356e8dabd54b27d822682141f6.html", "platform": "news"}, {"title": "🎉 产技新春团圆｜云端联欢、文化发布、惊喜不断！", "content": "🎁评论有礼，快来参与～ 评论区留下你的新年祝福语 截至2月23日，点赞前5名可以获得新年快乐桶一个噢～", "author": "菜鸟产品技术部", "time": "2025-02-11", "url": "", "platform": "jizha"}, {"title": "「在宽面对面」第15期", "content": "最近一段时间，在宽几乎成了会说话的人型AI广告牌，任何场景里，三句话不离AI。", "author": "菜鸟产品技术部", "time": "2025-01-06", "url": "", "platform": "jizha"}, {"title": "史上第一次！想说说天地会同学变成圣诞老人", "content": "产技三年醇的现场，在宽就这么戴上胡子，背上礼物袋，红红火火地来了！", "author": "菜鸟产品技术部", "time": "2024-12-29", "url": "", "platform": "jizha"}, {"title": "菜鸟2025年7-12月中国大区五年陈仪式", "content": "五年，是我们走过的日常。约200位菜鸟五年陈同学在总部园区温暖相聚，共同度过了自己的五年陈仪式。", "author": "菜小鸟", "time": "2024-12-26", "url": "", "platform": "jizha"}, {"title": "致敬每一位并肩作战的你｜菜鸟产品技术部双11复盘会", "content": "12月19日，菜鸟产品技术部召开2025双11及黑五复盘会，系统回顾双11全周期技术护航历程。", "author": "菜鸟产品技术部", "time": "2024-12-22", "url": "", "platform": "jizha"}, {"title": "☕️「在宽面对面」第14期：核心的目标是把AI用到最好", "content": "11月，在宽和10位产技同学围绕AI专题，展开了一场畅所欲言的线下对谈。", "author": "菜鸟产品技术部", "time": "2024-11-19", "url": "", "platform": "jizha"}, {"title": "【菜鸟1024产技节】菜包AI创新大赛", "content": "本次大赛共吸引参赛总人数455人。共提交了153个作品，在1024技术节决赛当天，有幸邀请到菜鸟CTO在宽、产技HR负责人东芜、跨境物流&平台产品技术负责人毕啸作为决赛评委。", "author": "", "time": "2023-06-06", "url": "https://www.aliway.com/read.php?tid=1513029", "platform": "alinei"}, {"title": "菜鸟CTO在宽：产业互联网的技术红利与复利", "content": "深度讨论菜鸟如何利用RFID、自动驾驶和云计算改造物流行业。核心思想是通过深度产业融合实现\"技术复利\"，覆盖从平台技术到产业技术的转型（2019年后）。", "author": "腾讯云开发者社区", "time": "2023-03-01", "url": "https://cloud.tencent.com/developer/article/2230500", "platform": "news"}, {"title": "对话菜鸟CTO李强：国内物流企业应该追求组合技术复利｜科创100人", "content": "在宽提出物流企业应追求\"组合技术的复利\"，而非依赖单一技术突破。以自动驾驶为例，它只能替代约20%的司机成本，必须与装载优化、路线规划结合才能实现降本。", "author": "新浪财经", "time": "2023-02-28", "url": "https://finance.sina.com.cn/tech/internet/2023-02-28/doc-imyifekh0032214.shtml", "platform": "news"}, {"title": "物流企业应追求组合技术带来的复利", "content": "在宽强调菜鸟的技术路径更注重一线作业人员的主动性，以及人的经验与技术数据的有机结合。文章提到他在东南亚科技媒体发表的关于AI自动驾驶的署名文章。", "author": "电商派", "time": "2023-02-28", "url": "https://www.pai.com.cn/210667.html", "platform": "news"}, {"title": "跟菜鸟CTO聊了一上午，我更深刻地理解了\"产业互联网\"应该怎么做", "content": "两小时深度访谈，在宽阐释了技术如何改造传统物流。核心理念：\"产业互联网\"应聚焦\"做好技术\"——让应用层软件高度可靠、低成本，而非追求\"高大上\"的技术噱头。", "author": "OFweek物联网", "time": "2023-02-15", "url": "https://iot.ofweek.com/2023-02/ART-132215-8500-30587543.html", "platform": "news"}, {"title": "行易毕业了，江湖再见", "content": "今天是一个很普通的日子，是我在菜鸟的第2318天...首先还是要感谢让我来到阿里的@在宽(19177)，以及给我很多帮助的师兄@大通(15283)...", "author": "陈罡(行易)", "time": "2022-02-10", "url": "https://www.aliway.com/read.php?tid=611140", "platform": "alinei"}, {"title": "菜鸟CTO在宽：最好的物流科技就是能扎实服务好实体经济", "content": "在宽认为，核心的因素是：快递行业数字化。如今每个分拨中心都是高度自动化，都与电子面单息息相关。而菜鸟的初心，是希望做物流产业互联网。", "author": "雷锋网", "time": "2021-11-04", "url": "https://www.aliway.com/read.php?tid=592951", "platform": "alinei"}, {"title": "菜鸟CTO：最好的物流科技就是能扎实服务好实体经济", "content": "在宽阐述了菜鸟\"简单极致，贴地疾飞\"的技术文化。强调物流技术应\"从场景出发\"而非\"拿技术找场景\"。提到LEMO PDA和贪心求解器算法等落地案例。", "author": "雷峰网", "time": "2021-11-04", "url": "https://m.leiphone.com/category/industrynews/mp43pc5GHyZhd6qi.html", "platform": "news"}, {"title": "菜鸟CTO谈物流科技：科学家也要贴地飞行", "content": "在宽出任菜鸟CTO后首次媒体专访。强调物流技术应从实际场景出发解决问题，反对\"黑科技崇拜\"。倡导\"刚刚好\"的技术实现大规模部署，而非追求最前沿方案。", "author": "量子位", "time": "2021-11-03", "url": "https://www.qbitai.com/2021/11/29944.html", "platform": "news"}, {"title": "全球化战场求贤若渴！", "content": "全球化战场求贤若渴！做有全球化特色的中台招聘", "author": "李强(在宽)", "time": "2021-07-14", "url": "https://www.aliway.com/detail?id=f6c72df4015f4b5b9fafac91f9946127", "platform": "alinei"}, {"title": "LazMall愿景与招聘", "content": "我们会在中台开源架构的基础上支持lazada多业务和多国家并行研发，支持业务小闭环迭代，大幅缩短决策链路，加快市场响应时间。lazada Mall是我们面向未来的核心业务。", "author": "李强(在宽)", "time": "2021-04-19", "url": "https://www.aliway.com/detail?id=3427c44fdc364bed90de60137c948629", "platform": "alinei"}, {"title": "AliExpress-商家技术团队招人", "content": "手工给天水和AE商家技术团队打call,AE的商家规模一般都比较小,且我们还不是行业的绝对第一,需要针对小卖家有更创新的产品模式,简单留给客户,复杂我们自己用技术解决。", "author": "李强(在宽)", "time": "2021-04-14", "url": "https://www.aliway.com/detail?id=8b5ae4f352c44e5d9d6ef658314443df", "platform": "alinei"}, {"title": "AliExpress欧洲技术诚邀你一起乘风破浪", "content": "欧洲是AE最重点的区域,也是我们最早开始探索业务和技术本地化发展的区域,过去一年我们欧洲技术团队在支持国家业务发展,协同杭州平台团队方面积累了非常多的经验。", "author": "李强(在宽)", "time": "2021-04-13", "url": "https://www.aliway.com/detail?id=043f359ef6974d49b210150ad2add90d", "platform": "alinei"}, {"title": "时尚跨境电商（F1）技术部招聘", "content": "这是一个非常棒的内部创业团队,一个能将不可能变成可能是使命必达的团队,一个承载了为全球化闯出一条新道路的团队。", "author": "李强(在宽)", "time": "2021-04-12", "url": "https://www.aliway.com/detail?id=4cc3559a8a6d41a4abb81139b3494825", "platform": "alinei"}, {"title": "鸟戈 毕业了", "content": "比较不善言辞，就不多说了...也非常感谢曾经一起相处过的ICBU和AE的小伙伴...@在宽(19177)...", "author": "", "time": "2021-04-09", "url": "https://www.aliway.com/read.php?tid=551332", "platform": "alinei"}, {"title": "AliExpress广告直通车诚招技术", "content": "欢迎大家加入这个不断创新和进取的算法团队，不仅仅是传统意义的直通车，我们更加会针对跨境的小商家提供更简单、确定性更高的广告产品。", "author": "李强(在宽)", "time": "2021-04-07", "url": "https://www.aliway.com/detail?id=83aaf801a19a4fc0b48ba7ddf6f8b07e", "platform": "alinei"}, {"title": "Alibaba海外买楼招聘", "content": "欢迎加入蚂蚁国际技术团队，一起成就集团全球化大业", "author": "李强(在宽)", "time": "2020-07-13", "url": "https://www.aliway.com/detail?id=98f34dd942794452af0b36beb37dcce2", "platform": "alinei"}, {"title": "AI国际事业部-国际化广告平台招聘", "content": "广告仍然是全球化战场最高效的商业化手段，欢迎大家加入！", "author": "李强(在宽)", "time": "2020-06-09", "url": "https://www.aliway.com/detail?id=e57fd30e67264e52a771dc1b54377f7e", "platform": "alinei"}, {"title": "【菜鸟七周年】总裁万霖和12000多人的3年之约", "content": "菜鸟生日快乐！永远的菜鸟人！", "author": "李强(在宽)", "time": "2020-05-29", "url": "https://www.aliway.com/detail?id=841c6a9fa57341e08ef61e0a0078b3ac", "platform": "alinei"}, {"title": "恭喜4月份战役之星", "content": "恭喜和感谢4月份的战役之星，我们使命必达，我们心怀梦想，我们永远年轻！我们在路上！加油！", "author": "李强(在宽)", "time": "2020-05-14", "url": "https://www.aliway.com/detail?id=0829ba6419364c7386a41022bb84e4e4", "platform": "alinei"}, {"title": "战斗季，感谢努力的自己，感谢一起战斗的你！", "content": "全球化，大舞台！我们的征程是星辰大海！", "author": "李强(在宽)", "time": "2020-04-30", "url": "https://www.aliway.com/detail?id=0829ba6419364c7386a41022bb84e4e4", "platform": "alinei"}, {"title": "与经济体全球化战略一起共振--- SIRIUS战役总结会", "content": "我们的征程是星辰大海，我们赶上了好时代，感恩，感谢，继续加油！", "author": "李强(在宽)", "time": "2019-09-09", "url": "https://www.aliway.com/detail?id=b34bfe0a85374f38aed22f9edef25d7e", "platform": "alinei"}, {"title": "Time to say goodbye, 云动从阿里毕业了", "content": "非常不想说再见，非常不舍你的毕业，感谢你在阿里一路走来，尤其是在全球化道路上的卓越贡献，没有你带领的Voyager项目，就没有今天的国际化中台。", "author": "李强(在宽)", "time": "2019-07-08", "url": "https://www.aliway.com/detail?id=9dbcc0f2ef5a4920897017b327b4a84a", "platform": "alinei"}, {"title": "全球化，Fighting All in One——SIRIUS战役誓师大会", "content": "2019年3月7日，承载着AE技术升级并与集团国际化中台融合重要使命的SIRIUS战役誓师大会在圆月山庄举行。新零售技术国际化战略负责人在宽现场介绍了SIRIUS战役的目标和意义。", "author": "", "time": "2019-03-08", "url": "https://www.aliway.com/read.php?tid=448713", "platform": "alinei"}, {"title": "天水离职帖", "content": "2011年7月18日入职报道的场景恍如昨日...还要感谢人生导师玄难和在宽，在迷茫的时候引导我寻找新的目标、提升自我认知。", "author": "马金金(天水)", "time": "2018-06-28", "url": "https://www.aliway.com/read.php?tid=413929", "platform": "alinei"}, {"title": "他们今年的KPI只有一条：去实现！", "content": "菜鸟技术人！Ready Go！", "author": "李强(在宽)", "time": "2017-04-14", "url": "https://www.aliway.com/detail?id=2f3e2ee4dcca4c0ca338dc1c5f482f68", "platform": "alinei"}, {"title": "菜鸟WMS求人才推荐", "content": "欢迎加入大宝创业团队", "author": "李强(在宽)", "time": "2015-12-31", "url": "https://www.aliway.com/detail?id=2a26a51a0aae4d33b4fb8c813af7303a", "platform": "alinei"}, {"title": "菜鸟村淘物流&货运市场招人", "content": "欢迎加入菜鸟，共创物流大业，打造商业技术设施", "author": "李强(在宽)", "time": "2015-07-15", "url": "https://www.aliway.com/detail?id=1447e002ea0c426fa4337e74a844c17c", "platform": "alinei"}, {"title": "2012年集团M4P9晋升公告", "content": "经过各BU提名，360度评估，集团M4P9晋升委员会面试...4 在宽(李强) 天猫事业部 - 产品技术部 - 商家平台 & 服务 M3 M4", "author": "", "time": "2013-06-18", "url": "https://www.aliway.com/read.php?tid=202759", "platform": "alinei"}, {"title": "春联也有打油的！", "content": "前两天夜里半睡半醒之时，突然回想起年初天猫产品技术年会上，作的一副乱七八糟的春联...上联下：心在宽，人自在，情怡梦远溢孤城。", "author": "陆旻", "time": "2012-09-28", "url": "https://www.aliway.com/read.php?tid=176549", "platform": "alinei"}, {"title": "史上最强招聘音！", "content": "欢迎大家加入天猫商家技术团队，携手打造集团大B业务平台！工作地点在杭州", "author": "李强(在宽)", "time": "2012-09-20", "url": "https://www.aliway.com/detail?id=34904aea6b6f4aa4815793ccdea3d15b", "platform": "alinei"}, {"title": "欢迎加入天猫产品技术部商家技术与服务团队", "content": "亲，你是否对早一批的淘宝人充满羡慕与嫉妒，上帝给了他们一个舞台，让他们尽情秀出自己绚丽的舞姿。天猫有这样一群人，在天猫用短短一年多时间突破一千亿...", "author": "李强(在宽)", "time": "2012-09-19", "url": "https://www.aliway.com/detail?id=c0336a170a96459a8a97f71a054de1a4", "platform": "alinei"}, {"title": "关于客户第一的思考，一个技术人员的角度", "content": "内部的易用性也是成本的降低和稳定性的提高，公司每年花在技术人员身上的钱，不会比买机器和运维的少的。", "author": "李强(在宽)", "time": "2011-07-30", "url": "https://www.aliway.com/detail?id=cdef199d99a84c33b167a6357e5a7976", "platform": "alinei"}, {"title": "钢铁是怎样炼成的？CTU4.0背后的故事", "content": "2月1日，在宽提出了业务安全产品2011年的总体方向，继续改进CTU3.0的指标模型，规则引擎与BI模型整合，从数据过滤向行为分析转变。", "author": "叶长程(卢云)", "time": "2010-12-02", "url": "https://www.aliway.com/read.php?tid=65699", "platform": "alinei"}, {"title": "CTU4.0——淘宝业务风险控制的一个新里程碑！", "content": "2010年感恩节的前夜是个让许多淘宝业务安全技术和业务小二们欣喜若狂、难以入眠的夜晚，因为那天下午实时欺诈模型成功上线！", "author": "李强(在宽)", "time": "2010-11-30", "url": "https://www.aliway.com/detail?id=51f5d5e49b9f4f3ead88971153c7803f", "platform": "alinei"}, {"title": "技术大学讲师饕餮盛宴！", "content": "盘点2011年，共有以下33位优秀讲师晋升为导师，他们是：...在宽...共有8位导师晋升为大师...", "author": "宗伟", "time": "2010-11-15", "url": "https://www.aliway.com/read.php?tid=62859", "platform": "alinei"}, {"title": "给我们的内部猎头们鼓掌!", "content": "在18（要发）这样一个日子，我们的颁奖嘉宾MM和享受内推之惠的大户菲青、行癫、优昙扛着礼品、奖状和一盆充满爱意的仙人掌走进了内部猎头的身边...在宽.jpg 在宽", "author": "董毅", "time": "2010-03-19", "url": "https://www.aliway.com/read.php?tid=18058", "platform": "alinei"}, {"title": "运营支撑部服务线新人喜乐报到", "content": "喜乐同学报到后立即投入了消费者维权中心项目的开发中，让我们祝福喜乐在项目中快速成长，在淘宝快乐工作！", "author": "李强(在宽)", "time": "2010-01-19", "url": "https://www.aliway.com/detail?id=ab375c51626042fbbca50c780fbab849", "platform": "alinei"}];
@@ -2368,7 +2509,7 @@ if (currentTab === 'journey') renderForumPosts();
 // Show storage mode
 (function() {
     const el = document.getElementById('storage-mode');
-    if (el) el.textContent = firebaseReady ? '☁️ 云端同步模式' : '💾 本地存储模式';
+    if (el) el.textContent = '☁️ Gitee 云端同步';
 })();
 
 // ============ WORD CLOUD ============
