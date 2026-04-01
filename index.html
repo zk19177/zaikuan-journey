@@ -1848,33 +1848,34 @@ const GITEE_REPO = 'bulipaul/zks-world';
 const GITEE_TOKEN = '10ca4ce9ed0229aad7fcb1f3f0c2fcd5';
 
 // Load messages from Gitee Issues
+// NOTE: Gitee API v5 uses access_token as query parameter for GET, and in body for POST/PATCH
+// GET endpoint: /api/v5/repos/{owner}/{repo}/issues (standard path)
+// POST endpoint: /api/v5/repos/{owner}/issues (owner-level, with repo in body)
+// PATCH endpoint: /api/v5/repos/{owner}/issues/{number} (owner-level, with repo in body)
 async function loadMessagesFromGitee() {
     try {
-        const resp = await fetch(`https://gitee.com/api/v5/repos/${GITEE_REPO}/issues?state=open&labels=guestbook`, {
-            headers: { 
-                'Accept': 'application/json',
-                'Authorization': `token ${GITEE_TOKEN}`
-            }
+        const resp = await fetch(`https://gitee.com/api/v5/repos/${GITEE_REPO}/issues?access_token=${GITEE_TOKEN}&state=open&labels=guestbook&per_page=100&sort=created&direction=desc`, {
+            headers: { 'Accept': 'application/json' }
         });
-        if (!resp.ok) throw new Error('Gitee API failed');
+        if (!resp.ok) throw new Error('Gitee API failed: ' + resp.status);
         const issues = await resp.json();
         return issues.map(issue => {
             try {
                 const body = issue.body || '{}';
                 const data = JSON.parse(body);
                 return {
-                    id: 'msg_' + issue.number,
+                    id: 'gitee_' + issue.number,
                     name: data.name || issue.user?.login || '匿名',
                     content: data.content || '',
                     media: data.media || [],
-                    time: new Date(issue.created_at).getTime(),
+                    time: data.time || new Date(issue.created_at).getTime(),
                     color: data.color || '#4facfe',
                     ownerToken: data.ownerToken || '__gitee__',
                     issueNumber: issue.number
                 };
             } catch(e) {
                 return {
-                    id: 'msg_' + issue.number,
+                    id: 'gitee_' + issue.number,
                     name: issue.user?.login || '匿名',
                     content: issue.body || '',
                     media: [],
@@ -1892,53 +1893,75 @@ async function loadMessagesFromGitee() {
 }
 
 // Save message to Gitee Issues
+// Gitee API v5: POST /repos/{owner}/issues with repo in body
 async function saveMessageToGitee(msg) {
     try {
+        // Strip large media data for Gitee (only keep small images)
+        const mediaForGitee = (msg.media || []).map(m => {
+            // Skip base64 data larger than 50KB to avoid Gitee body size limits
+            if (m.data && m.data.length > 50000) {
+                return { type: m.type, mediaId: m.mediaId, note: 'image_too_large_for_cloud' };
+            }
+            return m;
+        });
+        
+        const [owner, repo] = GITEE_REPO.split('/');
         const issueData = {
-            title: `留言: ${msg.name}`,
+            access_token: GITEE_TOKEN,
+            repo: repo,
+            title: `留言: ${msg.name} - ${new Date(msg.time).toLocaleDateString('zh-CN')}`,
             body: JSON.stringify({
                 name: msg.name,
                 content: msg.content,
-                media: msg.media,
+                media: mediaForGitee,
                 color: msg.color,
-                ownerToken: msg.ownerToken
+                ownerToken: msg.ownerToken,
+                time: msg.time,
+                localId: msg.id
             }),
-            labels: ['guestbook']
+            labels: 'guestbook'
         };
         
-        const resp = await fetch(`https://gitee.com/api/v5/repos/${GITEE_REPO}/issues`, {
+        const resp = await fetch(`https://gitee.com/api/v5/repos/${owner}/issues`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `token ${GITEE_TOKEN}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(issueData)
         });
         
-        if (!resp.ok) throw new Error('Failed to create issue');
+        if (!resp.ok) {
+            const errText = await resp.text();
+            throw new Error('Failed to create issue: ' + resp.status + ' ' + errText);
+        }
         const issue = await resp.json();
+        console.log('Message saved to Gitee, issue:', issue.number);
         return issue.number;
     } catch(e) {
-        console.log('Gitee save failed:', e);
+        console.warn('Gitee save failed:', e);
         return null;
     }
 }
 
 // Delete message from Gitee Issues
+// Gitee API v5: PATCH /repos/{owner}/issues/{number} with repo in body
 async function deleteMessageFromGitee(issueNumber) {
     if (!issueNumber) return false;
     try {
-        const resp = await fetch(`https://gitee.com/api/v5/repos/${GITEE_REPO}/issues/${issueNumber}`, {
+        const [owner, repo] = GITEE_REPO.split('/');
+        const resp = await fetch(`https://gitee.com/api/v5/repos/${owner}/issues/${issueNumber}`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `token ${GITEE_TOKEN}`
-            },
-            body: JSON.stringify({ state: 'closed' })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                access_token: GITEE_TOKEN,
+                repo: repo,
+                state: 'closed'
+            })
         });
+        if (!resp.ok) {
+            console.warn('Gitee delete failed:', resp.status);
+        }
         return resp.ok;
     } catch(e) {
-        console.log('Gitee delete failed:', e);
+        console.warn('Gitee delete failed:', e);
         return false;
     }
 }
@@ -1947,15 +1970,20 @@ async function deleteMessageFromGitee(issueNumber) {
 async function syncFromGitee() {
     const btn = document.querySelector('button[onclick="syncFromGitee()"]');
     const originalText = btn.textContent;
-    btn.textContent = '🔄 同步中...';
+    btn.textContent = '同步中...';
     btn.disabled = true;
     
     try {
         const giteeMessages = await loadMessagesFromGitee();
         if (giteeMessages && giteeMessages.length > 0) {
-            // Merge with local messages - avoid duplicates
+            // Merge with local messages - avoid duplicates by checking both id and content
+            const existingContents = new Set(messages.map(m => m.name + '|' + m.content + '|' + m.time));
             const existingIds = new Set(messages.map(m => m.id));
-            const newMessages = giteeMessages.filter(m => !existingIds.has(m.id));
+            const newMessages = giteeMessages.filter(m => {
+                // Check by ID and by content+time combo to avoid all duplicates
+                const contentKey = m.name + '|' + m.content + '|' + m.time;
+                return !existingIds.has(m.id) && !existingContents.has(contentKey);
+            });
             
             if (newMessages.length > 0) {
                 messages = [...messages, ...newMessages];
@@ -1963,16 +1991,37 @@ async function syncFromGitee() {
                 saveToLocal();
                 renderMessages();
                 updateWordCloud();
-                alert(`同步成功！新增 ${newMessages.length} 条留言`);
+                alert('同步成功！新增 ' + newMessages.length + ' 条留言');
             } else {
                 alert('已是最新，没有新留言');
             }
+        } else if (giteeMessages && giteeMessages.length === 0) {
+            // Cloud is empty but we have local messages - offer to upload them
+            const localRealMessages = messages.filter(m => m.ownerToken !== '__system__');
+            if (localRealMessages.length > 0) {
+                if (confirm('云端暂无留言，是否将本地的 ' + localRealMessages.length + ' 条留言同步到云端？')) {
+                    let uploaded = 0;
+                    for (const msg of localRealMessages) {
+                        if (!msg.issueNumber) {
+                            const issueNumber = await saveMessageToGitee(msg);
+                            if (issueNumber) {
+                                msg.issueNumber = issueNumber;
+                                uploaded++;
+                            }
+                        }
+                    }
+                    saveToLocal();
+                    alert('已上传 ' + uploaded + ' 条留言到云端');
+                }
+            } else {
+                alert('同步完成，云端暂无留言');
+            }
         } else {
-            alert('同步完成，云端暂无留言');
+            alert('同步失败，请检查网络连接');
         }
     } catch(e) {
         console.error('Sync failed:', e);
-        alert('同步失败，请检查网络连接');
+        alert('同步失败: ' + e.message);
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -2071,9 +2120,13 @@ async function initMessages() {
     try {
         const giteeMessages = await loadMessagesFromGitee();
         if (giteeMessages && giteeMessages.length > 0) {
-            // Merge Gitee messages with local (avoid duplicates)
+            // Merge Gitee messages with local (avoid duplicates by content+time)
+            const localContents = new Set(messages.map(m => m.name + '|' + m.content + '|' + m.time));
             const localIds = new Set(messages.map(m => m.id));
-            const newMessages = giteeMessages.filter(m => !localIds.has(m.id));
+            const newMessages = giteeMessages.filter(m => {
+                const contentKey = m.name + '|' + m.content + '|' + m.time;
+                return !localIds.has(m.id) && !localContents.has(contentKey);
+            });
             
             if (newMessages.length > 0) {
                 messages = [...messages, ...newMessages];
@@ -2081,6 +2134,18 @@ async function initMessages() {
                 saveToLocal();
                 renderMessages();
                 updateWordCloud();
+                console.log('Synced ' + newMessages.length + ' messages from Gitee');
+            }
+        }
+        
+        // Also upload any local messages that don't have issueNumber yet
+        const unsynced = messages.filter(m => !m.issueNumber && m.ownerToken !== '__system__' && !m.id.startsWith('gitee_') && !m.id.startsWith('sample'));
+        for (const msg of unsynced) {
+            const issueNumber = await saveMessageToGitee(msg);
+            if (issueNumber) {
+                msg.issueNumber = issueNumber;
+                saveToLocal();
+                console.log('Uploaded local message to Gitee:', msg.id);
             }
         }
     } catch(e) {
